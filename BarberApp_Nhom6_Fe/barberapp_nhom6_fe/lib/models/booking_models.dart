@@ -181,3 +181,66 @@ class BookingCreateReq {
   @override
   String toString() => jsonEncode(toJson());
 }
+/// ================== Booking Detail (dành cho màn hình sửa lịch) ==================
+
+class BookingDetail {
+  final int id;
+  final int shopId;
+  final int stylistId;
+  final DateTime startDt;
+  final DateTime endDt;
+  final num totalPrice;
+  final String? note;
+  final List<BookingServiceItem> services;
+
+  BookingDetail({
+    required this.id,
+    required this.shopId,
+    required this.stylistId,
+    required this.startDt,
+    required this.endDt,
+    required this.totalPrice,
+    this.note,
+    required this.services,
+  });
+
+  factory BookingDetail.fromJson(Map<String, dynamic> j) => BookingDetail(
+    id: _asInt(j['id']),
+    shopId: _asInt(j['shop_id']),
+    stylistId: _asInt(j['stylist_id']),
+    startDt: _parseIsoAssumeUtc(j['start_dt'] as String),
+    endDt: _parseIsoAssumeUtc(j['end_dt'] as String),
+    totalPrice: _asNum(j['total_price']),
+    note: j['note'] as String?,
+    services: (j['services'] as List? ?? [])
+        .map((e) =>
+        BookingServiceItem.fromJson(Map<String, dynamic>.from(e)))
+        .toList(),
+  );
+}
+
+class BookingServiceItem {
+  final int id;
+  final int serviceId;
+  final num price;
+  final int durationMin;
+  final String? serviceName;
+
+  BookingServiceItem({
+    required this.id,
+    required this.serviceId,
+    required this.price,
+    required this.durationMin,
+    this.serviceName,
+  });
+
+  factory BookingServiceItem.fromJson(Map<String, dynamic> j) =>
+      BookingServiceItem(
+        id: _asInt(j['id']),
+        serviceId: _asInt(j['service_id']),
+        price: _asNum(j['price']),
+        durationMin: _asInt(j['duration_min']),
+        serviceName: j['service_name'] as String?,
+      );
+}
+

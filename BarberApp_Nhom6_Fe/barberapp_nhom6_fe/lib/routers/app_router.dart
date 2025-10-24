@@ -7,12 +7,16 @@ import '../screens/booking/service_pick_screen.dart';
 import '../screens/booking/shop_list_screen.dart';
 import '../screens/booking/slot_pick_screen.dart';
 import '../screens/booking/stylist_list_screen.dart';
+import '../screens/review/my_reviews_screen.dart';
+import '../screens/review/review_form_screen.dart';
 import '../screens/splash_screen.dart';
 import '../screens/login_screen.dart';
 import '../screens/register_screen.dart';
 import '../screens/home_screen.dart';
 import '../screens/admin/admin_screen.dart';
 import '../services/auth_service.dart';
+import '../screens/booking/edit_booking_screen.dart';
+
 
 class AppRouter {
   static final _auth = AuthService();
@@ -72,6 +76,28 @@ class AppRouter {
         path: '/bookings/me',
         builder: (context, state) => const MyBookingsScreen(),
       ),
+      GoRoute(
+        path: '/booking/edit',
+        builder: (context, state) {
+          final booking = state.extra as Map<String, dynamic>;
+          return EditBookingScreen(bookingId: booking['id']); // ✅ sửa đúng tham số
+        },
+      ),
+
+      // ✅ Màn thêm / sửa Review
+      GoRoute(
+        path: '/review/add',
+        builder: (context, state) {
+          final booking = state.extra as Map<String, dynamic>?;
+          return ReviewFormScreen(bookingId: booking?['id']);
+        },
+      ),
+      GoRoute(
+        path: '/review/my',
+        builder: (context, state) => const MyReviewsScreen(),
+      ),
+
+
 
 // (tuỳ chọn) nếu bạn muốn có màn danh sách services tổng:
       GoRoute(

@@ -2,7 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
 from app.core.deps import get_db
 from app.core.auth_deps import admin_required
+from app.models.user import User
 from app.models.review import Review, ReviewReply
+from app.core.auth_deps import get_current_user
 from app.models.booking import Booking, BookingStatus
 from app.schemas.review import (
     ReviewCreate, ReviewUpdate, ReviewOut,
@@ -110,3 +112,74 @@ def delete_reply(reply_id: int, db: Session = Depends(get_db)):
     db.delete(reply)
     db.commit()
     return {"message": "Reply deleted"}
+
+# 8️⃣ User tự xoá review của mình
+@router.delete("/me/{review_id}")
+def delete_my_review(
+    review_id: int,
+    db: Session = Depends(get_db),
+    me: User = Depends(get_current_user)
+):
+    review = db.query(Review).filter(Review.id == review_id).first()
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found")
+    if review.user_id != me.id:
+        raise HTTPException(status_code=403, detail="You can only delete your own reviews")
+
+    db.delete(review)
+    db.commit()
+    return {"message": "Review deleted successfully"}
+#Update review.py
+# 9️⃣ User lấy danh sách review của chính mình
+@router.get("/me", response_model=list[ReviewOut])
+def get_my_reviews(
+    db: Session = Depends(get_db),
+    me: User = Depends(get_current_user)
+):
+    return (
+        db.query(Review)
+        .filter(Review.user_id == me.id)
+        .order_by(Review.id.desc())
+        .all()
+    )
+
+
+# 🔟 User xem review chi tiết của mình
+@router.get("/me/{review_id}", response_model=ReviewOut)
+def get_my_review_detail(
+    review_id: int,
+    db: Session = Depends(get_db),
+    me: User = Depends(get_current_user)
+):
+    review = (
+        db.query(Review)
+        .filter(Review.id == review_id, Review.user_id == me.id)
+        .first()
+    )
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found")
+    return review
+
+
+# 1️⃣1️⃣ User tự cập nhật review của mình
+@router.put("/me/{review_id}", response_model=ReviewOut)
+def update_my_review(
+    review_id: int,
+    payload: ReviewUpdate,
+    db: Session = Depends(get_db),
+    me: User = Depends(get_current_user)
+):
+    review = (
+        db.query(Review)
+        .filter(Review.id == review_id, Review.user_id == me.id)
+        .first()
+    )
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found")
+
+    for key, value in payload.dict(exclude_unset=True).items():
+        setattr(review, key, value)
+
+    db.commit()
+    db.refresh(review)
+    return review

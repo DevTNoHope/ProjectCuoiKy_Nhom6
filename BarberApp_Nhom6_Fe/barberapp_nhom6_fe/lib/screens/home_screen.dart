@@ -81,6 +81,14 @@ class HomeScreen extends StatelessWidget {
               label: 'Dịch vụ',
               onTap: () => context.go('/services'), // nếu bạn có route /services
             ),
+
+            // 🆕 ⭐ Thêm nút "Đánh giá của tôi"
+            actionButton(
+              icon: Icons.reviews,
+              label: 'Đánh giá của tôi',
+              onTap: () => context.go('/review/my'),
+            ),
+
             actionButton(
               icon: Icons.help_outline,
               label: 'Hỗ trợ',

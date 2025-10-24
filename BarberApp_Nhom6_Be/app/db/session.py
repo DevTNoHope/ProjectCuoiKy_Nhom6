@@ -15,4 +15,5 @@ SessionLocal = sessionmaker(
     autoflush=False,
     future=True,
 )
+from app.models.base import Base
 

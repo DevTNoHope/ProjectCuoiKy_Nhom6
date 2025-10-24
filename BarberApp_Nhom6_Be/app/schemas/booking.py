@@ -36,9 +36,12 @@ class BookingCreate(BaseModel):
 # Cập nhật booking
 class BookingUpdate(BaseModel):
     status: Optional[BookingStatus] = None
+    shop_id: Optional[int] = None                # 🆕 thêm
+    stylist_id: Optional[int] = None             # 🆕 thêm
     start_dt: Optional[datetime] = None
     end_dt: Optional[datetime] = None
     note: Optional[str] = None
+    services: Optional[List[BookingServiceIn]] = None   # 🆕 thêm
 
 # Trả ra client
 class BookingOut(BaseModel):

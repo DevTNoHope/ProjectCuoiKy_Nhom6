@@ -9,7 +9,7 @@ class AuthService {
   final SecureStore _store;
 
   // Đổi BASE_URL theo server của bạn
-  static const String BASE_URL = 'http://192.168.1.10:8000'; // emulator Android -> host
+  static const String BASE_URL = 'http://10.0.2.2:8000'; // emulator Android -> host
   // Nếu chạy máy thật cùng LAN, đổi thành IP máy: http://192.168.x.x:8000
 
   AuthService({Dio? dio, SecureStore? store})
@@ -105,4 +105,19 @@ class AuthService {
     }
     return e.message ?? 'Network error';
   }
+  /// ✅ Lấy user_id hiện tại từ token (dùng cho Review hoặc Booking)
+  Future<int?> getCurrentUserId() async {
+    final token = await _store.getToken();
+    if (token == null || token.isEmpty) return null;
+    try {
+      final decoded = JwtDecoder.decode(token);
+      final sub = decoded['sub'] ?? decoded['id'] ?? decoded['user_id'];
+      if (sub is int) return sub;
+      if (sub is String) return int.tryParse(sub);
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
 }
