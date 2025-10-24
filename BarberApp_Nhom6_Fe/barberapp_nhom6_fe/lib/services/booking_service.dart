@@ -19,6 +19,50 @@ class BookingService {
         .toList();
   }
 
+  // 🟢 Admin tạo booking thay user khác
+  Future<void> create({
+    required int userId,
+    required int shopId,
+    int? stylistId,
+    required String startDt,
+    required String endDt,
+    required double totalPrice,
+    required List<Map<String, dynamic>> services,
+    String? note,
+  }) async {
+    final token = await _store.getToken();
+    try {
+      final res = await _dio.post(
+        '/bookings',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+        ),
+        data: {
+          "user_id": userId, // 👈 cho phép admin đặt thay user
+          "shop_id": shopId,
+          "stylist_id": stylistId,
+          "start_dt": startDt,
+          "end_dt": endDt,
+          "total_price": totalPrice,
+          "note": note ?? "Admin booking for user",
+          "services": services,
+        },
+      );
+
+      if (res.statusCode != 201 && res.statusCode != 200) {
+        throw Exception('Tạo booking thất bại: ${res.data}');
+      }
+
+      print("✅ Booking created successfully: ${res.statusCode}");
+    } on DioException catch (e) {
+      print("❌ Booking create error: ${e.response?.data}");
+      rethrow;
+    }
+  }
+
   // 🟡 Duyệt booking
   Future<void> approve(int id) async {
     final token = await _store.getToken();

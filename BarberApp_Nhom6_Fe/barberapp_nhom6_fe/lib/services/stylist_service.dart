@@ -15,6 +15,19 @@ class StylistService {
         .toList();
   }
 
+  // 🟢 Lấy stylist theo chi nhánh (shop)
+  Future<List<Stylist>> getByShop(int shopId) async {
+    try {
+      final res = await _dio.get('/stylists/shop/$shopId');
+      return (res.data as List)
+          .map((e) => Stylist.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
+    } on DioException catch (e) {
+      print("❌ Lỗi khi tải stylist theo shop: ${e.response?.data}");
+      rethrow;
+    }
+  }
+
   // 🟡 Tạo stylist (Admin)
   Future<void> create({
     required int shopId,
@@ -35,7 +48,7 @@ class StylistService {
         'shop_id': shopId,
         'name': name,
         'bio': bio,
-        'is_active': true,
+        'is_active': isActive,
         'service_ids': serviceIds ?? [],
       },
     );
