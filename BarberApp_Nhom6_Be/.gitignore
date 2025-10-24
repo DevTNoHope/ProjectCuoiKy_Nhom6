@@ -1,0 +1,104 @@
+# ===============================
+# 🐍 Python / FastAPI Backend
+# ===============================
+
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+
+# Environment variables
+.env
+.env.local
+.env.*
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# Logs and temp files
+*.log
+logs/
+tmp/
+*.tmp
+*.bak
+
+# SQLite or local test DBs
+*.db
+*.sqlite3
+
+# Compiled C extensions
+*.so
+*.dll
+*.pyd
+
+# Coverage / Testing
+.coverage
+.tox/
+.nox/
+pytest_cache/
+htmlcov/
+
+# Distribution / packaging
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+
+# Jupyter / Colab
+.ipynb_checkpoints/
+*.ipynb
+
+# VSCode workspace history
+.history/
+*.code-workspace
+
+# PyCharm project data
+*.iml
+.idea/
+
+# Alembic migration cache
+migrations/versions/__pycache__/
+migrations/*.pyc
+alembic.ini
+
+# Local dev tools
+*.sqlite
+local_settings.py
+
+# Backup files
+*.orig
+*.rej
+
+# Node dependencies (if any JS/FE folder exists)
+node_modules/
+
+# Uvicorn reload artifacts
+*.pid
+*.pid.lock
+
+# =================================
+# ✅ End of .gitignore
+# =================================
