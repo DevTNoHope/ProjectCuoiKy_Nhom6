@@ -18,6 +18,7 @@ class BookingServiceIn(BaseModel):
 
 # Tạo booking mới (KHÔNG còn user_id)
 class BookingCreate(BaseModel):
+    user_id: Optional[int] = None
     shop_id: int
     stylist_id: Optional[int] = None
     start_dt: datetime
