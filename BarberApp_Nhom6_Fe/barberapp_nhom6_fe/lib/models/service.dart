@@ -3,12 +3,14 @@ class Service {
   final String name;
   final String? description;
   final double price;
+  final int durationMin;
 
   Service({
     required this.id,
     required this.name,
     this.description,
     required this.price,
+    required this.durationMin,
   });
 
   factory Service.fromJson(Map<String, dynamic> json) {
@@ -19,6 +21,7 @@ class Service {
       price: (json['price'] is int)
           ? (json['price'] as int).toDouble()
           : double.tryParse(json['price'].toString()) ?? 0.0,
+      durationMin: json['duration_min'] ?? 30,
     );
   }
 
@@ -27,5 +30,6 @@ class Service {
     'name': name,
     'description': description,
     'price': price,
+    'duration_min': durationMin,
   };
 }
