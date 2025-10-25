@@ -11,15 +11,19 @@ from app.schemas.booking import BookingOut, BookingCreate, BookingUpdate, Bookin
 
 router = APIRouter(prefix="/bookings", tags=["bookings"])
 
+
 def _to_utc(dt: datetime) -> datetime:
     # nhận từ Pydantic: có thể tz-aware (có Z) hoặc naive
     if dt.tzinfo is None:
         return dt.replace(tzinfo=timezone.utc)  # coi naive là UTC
     return dt.astimezone(timezone.utc)
+
+
 # 1. Danh sách toàn bộ booking (Admin)
 @router.get("", response_model=list[BookingOut], dependencies=[Depends(admin_required)])
 def list_bookings(db: Session = Depends(get_db)):
     return db.query(Booking).order_by(Booking.id.desc()).all()
+
 
 # 2a. Lấy booking của chính mình (JWT)
 @router.get("/me", response_model=list[BookingOut])
@@ -34,8 +38,13 @@ def list_my_bookings(
         .all()
     )
 
+
 # (Giữ nguyên) 2b. Lấy booking theo user_id (nếu bạn vẫn muốn API này cho admin/CSKH)
-@router.get("/user/{user_id}", response_model=list[BookingOut], dependencies=[Depends(admin_required)])
+@router.get(
+    "/user/{user_id}",
+    response_model=list[BookingOut],
+    dependencies=[Depends(admin_required)],
+)
 def list_user_bookings(user_id: int, db: Session = Depends(get_db)):
     return (
         db.query(Booking)
@@ -44,13 +53,20 @@ def list_user_bookings(user_id: int, db: Session = Depends(get_db)):
         .all()
     )
 
-# 3. Tạo mới booking (User) - lấy user từ JWT
+
+# ✅ 3. Tạo mới booking (User hoặc Admin)
 @router.post("", response_model=BookingOut, status_code=status.HTTP_201_CREATED)
 def create_booking(
     payload: BookingCreate,
     db: Session = Depends(get_db),
     me: User = Depends(get_current_user),
 ):
+    """
+    - User bình thường → booking gán user_id = me.id
+    - Admin → có thể truyền user_id để đặt thay người khác
+    """
+    user_id = payload.user_id if getattr(me, "role", "").lower() == "admin" and payload.user_id else me.id
+
     # Kiểm tra stylist tồn tại (nếu có chọn)
     if payload.stylist_id:
         stylist = db.query(Stylist).filter(Stylist.id == payload.stylist_id).first()
@@ -80,12 +96,13 @@ def create_booking(
     # total_calc = sum(s.price for s in payload.services)
     # if total_calc != payload.total_price:
     #     raise HTTPException(status_code=400, detail="total_price mismatch")
-    start_utc = _to_utc(payload.start_dt)
-    end_utc   = _to_utc(payload.end_dt)
 
-    # Tạo booking mới (user_id lấy từ JWT)
+    start_utc = _to_utc(payload.start_dt)
+    end_utc = _to_utc(payload.end_dt)
+
+    # 🟢 Tạo booking (với user_id đúng)
     booking = Booking(
-        user_id=me.id,
+        user_id=user_id,
         shop_id=payload.shop_id,
         stylist_id=payload.stylist_id,
         start_dt=start_utc,
@@ -111,6 +128,7 @@ def create_booking(
     db.commit()
     db.refresh(booking)
     return booking
+
 
 # 4. Cập nhật booking (duyệt / hủy / đổi lịch)
 @router.put("/{booking_id}", response_model=BookingOut)
@@ -148,6 +166,7 @@ def update_booking(booking_id: int, payload: BookingUpdate, db: Session = Depend
     db.refresh(booking)
     return booking
 
+
 # 5. Xoá booking (Admin)
 @router.delete("/{booking_id}", dependencies=[Depends(admin_required)])
 def delete_booking(booking_id: int, db: Session = Depends(get_db)):
@@ -157,6 +176,9 @@ def delete_booking(booking_id: int, db: Session = Depends(get_db)):
     db.delete(booking)
     db.commit()
     return {"message": "Deleted successfully"}
+
+
+# 6. Lấy lịch làm việc của stylist trong ngày
 @router.get("/stylist/{stylist_id}", response_model=list[BookingOut])
 def get_stylist_bookings_by_day(
     stylist_id: int,
@@ -166,7 +188,7 @@ def get_stylist_bookings_by_day(
 ):
     # khoảng thời gian trong ngày theo UTC
     start = datetime.combine(day, time.min).replace(tzinfo=timezone.utc)
-    end   = datetime.combine(day, time.max).replace(tzinfo=timezone.utc)
+    end = datetime.combine(day, time.max).replace(tzinfo=timezone.utc)
 
     return (
         db.query(Booking)

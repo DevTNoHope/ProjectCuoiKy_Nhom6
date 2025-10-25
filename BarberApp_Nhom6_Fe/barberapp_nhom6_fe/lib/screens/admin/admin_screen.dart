@@ -6,7 +6,8 @@ import 'ServicesPage.dart';
 import 'ShopsPage.dart';
 import 'StylistsPage.dart';
 import 'WorkSchedulesPage.dart';
-import 'BookingsPage.dart'; // ✅ thêm mới
+import 'BookingsPage.dart';
+import 'admin_booking_create_page.dart'; // ✅ thêm mới
 
 class AdminScreen extends StatefulWidget {
   const AdminScreen({super.key});
@@ -24,8 +25,9 @@ class _AdminScreenState extends State<AdminScreen> {
     ServicesPage(),
     StylistsPage(),
     WorkSchedulesPage(),
-    BookingsPage(), // ✅ thêm mới
+    BookingsPage(), // ✅ Duyệt / Hủy Booking
     ReviewsPage(),
+    AdminBookingCreatePage(), // ✅ Đặt lịch cho khách
   ];
 
   final List<String> _titles = const [
@@ -35,6 +37,7 @@ class _AdminScreenState extends State<AdminScreen> {
     'Quản lý Ca làm',
     'Duyệt / Hủy Booking',
     'Đánh giá khách hàng',
+    'Đặt lịch cho khách',
   ];
 
   @override
@@ -42,6 +45,12 @@ class _AdminScreenState extends State<AdminScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(_titles[_selectedIndex]),
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -52,26 +61,55 @@ class _AdminScreenState extends State<AdminScreen> {
           ),
         ],
       ),
-      body: _pages[_selectedIndex],
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex,
-        onDestinationSelected: (index) =>
-            setState(() => _selectedIndex = index),
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.store), label: 'Shop'),
-          NavigationDestination(icon: Icon(Icons.cut), label: 'Service'),
-          NavigationDestination(icon: Icon(Icons.person), label: 'Stylist'),
-          NavigationDestination(icon: Icon(Icons.schedule), label: 'Ca làm'),
-          NavigationDestination(
-            icon: Icon(Icons.calendar_month),
-            label: 'Booking',
-          ), // ✅ thêm
-          NavigationDestination(
-            icon: Icon(Icons.rate_review),
-            label: 'Đánh giá',
-          ),
-        ],
+
+      // ✅ Drawer thay cho NavigationBar
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            const DrawerHeader(
+              decoration: BoxDecoration(color: Colors.teal),
+              child: Center(
+                child: Text(
+                  'Bảng điều khiển Admin',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+            _buildMenuItem(Icons.store, 'Chi nhánh', 0),
+            _buildMenuItem(Icons.cut, 'Dịch vụ', 1),
+            _buildMenuItem(Icons.person, 'Stylist', 2),
+            _buildMenuItem(Icons.schedule, 'Ca làm', 3),
+            _buildMenuItem(Icons.calendar_month, 'Booking', 4),
+            _buildMenuItem(Icons.rate_review, 'Đánh giá', 5),
+            _buildMenuItem(Icons.add_circle_outline, 'Đặt lịch cho khách', 6),
+          ],
+        ),
       ),
+
+      body: _pages[_selectedIndex],
+    );
+  }
+
+  Widget _buildMenuItem(IconData icon, String title, int index) {
+    final isSelected = _selectedIndex == index;
+    return ListTile(
+      leading: Icon(icon, color: isSelected ? Colors.teal : null),
+      title: Text(
+        title,
+        style: TextStyle(
+          color: isSelected ? Colors.teal : null,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+        ),
+      ),
+      onTap: () {
+        setState(() => _selectedIndex = index);
+        Navigator.pop(context); // đóng Drawer
+      },
     );
   }
 }
