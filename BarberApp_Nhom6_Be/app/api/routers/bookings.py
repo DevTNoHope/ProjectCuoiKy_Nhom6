@@ -1,13 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from datetime import datetime, date, time, timezone
+from datetime import datetime, date, time, timezone, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from app.core.deps import get_db
 from app.core.auth_deps import admin_required, get_current_user
 from app.models.booking import Booking, BookingService
 from app.models.stylist import Stylist
+from app.models.schedule import WorkSchedule   # ✅ thêm import này
 from app.models.user import User
 from app.schemas.booking import BookingOut, BookingCreate, BookingUpdate, BookingStatus
+
 
 router = APIRouter(prefix="/bookings", tags=["bookings"])
 
@@ -91,11 +93,6 @@ def create_booking(
                 status_code=400,
                 detail="Stylist already has a booking in this time range",
             )
-
-    # (Tuỳ chọn) bạn có thể tự tính total_price từ services nếu muốn “server-authoritative”
-    # total_calc = sum(s.price for s in payload.services)
-    # if total_calc != payload.total_price:
-    #     raise HTTPException(status_code=400, detail="total_price mismatch")
 
     start_utc = _to_utc(payload.start_dt)
     end_utc = _to_utc(payload.end_dt)
@@ -203,3 +200,63 @@ def get_stylist_bookings_by_day(
         .order_by(Booking.start_dt.asc())
         .all()
     )
+
+
+# ✅ 7. Trả về danh sách giờ TRỐNG của stylist trong ngày
+@router.get("/stylist/{stylist_id}/available")
+def get_stylist_available_slots(
+    stylist_id: int,
+    day: date = Query(..., alias="date"),  # ví dụ ?date=2025-10-25
+    db: Session = Depends(get_db),
+):
+    """
+    Trả về danh sách các khoảng giờ trống của stylist trong ngày (dựa trên ca làm và booking hiện có)
+    """
+    # 1️⃣ Lấy ca làm theo thứ
+    weekday_str = day.strftime("%a")[:3]  # Mon/Tue/Wed...
+    schedule = (
+        db.query(WorkSchedule)
+        .filter(
+            WorkSchedule.stylist_id == stylist_id,
+            WorkSchedule.weekday == weekday_str,
+        )
+        .first()
+    )
+    if not schedule:
+        return []  # stylist nghỉ ngày này
+
+    # 2️⃣ Lấy tất cả booking đã chiếm chỗ trong ngày
+    start_day = datetime.combine(day, time.min).replace(tzinfo=timezone.utc)
+    end_day = datetime.combine(day, time.max).replace(tzinfo=timezone.utc)
+    bookings = (
+        db.query(Booking)
+        .filter(
+            Booking.stylist_id == stylist_id,
+            Booking.status.in_([BookingStatus.pending, BookingStatus.approved]),
+            Booking.start_dt < end_day,
+            Booking.end_dt > start_day,
+        )
+        .order_by(Booking.start_dt.asc())
+        .all()
+    )
+
+    # 3️⃣ Tạo danh sách slot rảnh dựa trên ca làm và booking
+    available = []
+    current = datetime.combine(day, schedule.start_time).replace(tzinfo=timezone.utc)
+    work_end = datetime.combine(day, schedule.end_time).replace(tzinfo=timezone.utc)
+
+    for b in bookings:
+        if current < b.start_dt:
+            available.append({
+                "start": current.isoformat().replace("+00:00", "Z"),
+                "end": b.start_dt.isoformat().replace("+00:00", "Z"),
+            })
+        current = max(current, b.end_dt)
+
+    if current < work_end:
+        available.append({
+            "start": current.isoformat().replace("+00:00", "Z"),
+            "end": work_end.isoformat().replace("+00:00", "Z"),
+        })
+
+    return available

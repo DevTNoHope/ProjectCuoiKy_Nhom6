@@ -153,7 +153,7 @@ class _WorkSchedulesPageState extends State<WorkSchedulesPage> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text('Sửa ca làm #${w.id} (Stylist #${w.stylistId})'),
+        title: Text('Sửa ca làm #${w.id} (${w.stylistName ?? "Stylist #${w.stylistId}"})'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -219,7 +219,7 @@ class _WorkSchedulesPageState extends State<WorkSchedulesPage> {
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Xóa ca làm?'),
-        content: Text('Xóa ca ${w.weekday} ${w.startTime}-${w.endTime} của stylist #${w.stylistId}?'),
+        content: Text('Xóa ca ${w.weekday} ${w.startTime}-${w.endTime} của ${w.stylistName ?? "stylist #${w.stylistId}"}?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Hủy')),
           ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('Xóa')),
@@ -261,7 +261,7 @@ class _WorkSchedulesPageState extends State<WorkSchedulesPage> {
             margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             child: ListTile(
               leading: const Icon(Icons.schedule),
-              title: Text('Stylist #${w.stylistId} • ${w.weekday}'),
+              title: Text('${w.stylistName ?? "Stylist #${w.stylistId}"} • ${w.weekday}'),
               subtitle: Text('${w.startTime} - ${w.endTime}'),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
