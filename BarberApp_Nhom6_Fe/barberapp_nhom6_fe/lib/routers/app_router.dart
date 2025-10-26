@@ -1,6 +1,7 @@
 // lib/routers/app_router.dart
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
+import '../models/booking_models.dart';
 import '../screens/booking/booking_confirm_screen.dart';
 import '../screens/booking/my_bookings_screen.dart';
 import '../screens/booking/service_pick_screen.dart';
@@ -51,23 +52,47 @@ class AppRouter {
         final shopId = int.parse(s.uri.queryParameters['shopId']!);
         return ServicePickScreen(shopId: shopId, stylistId: stylistId);
       }),
-      GoRoute(path: '/booking/slots', builder: (c,s){
-        final extra = s.extra as Map<String,dynamic>; // shop, stylist, service
-        return SlotPickScreen(
-          shop: extra['shop'],
-          stylist: extra['stylist'],
-          service: extra['service'],
-        );
-      }),
-      GoRoute(path: '/booking/confirm', builder: (c,s){
-        final extra = s.extra as Map<String,dynamic>; // + selectedStart
-        return BookingConfirmScreen(
-          shop: extra['shop'],
-          stylist: extra['stylist'],
-          service: extra['service'],
-          start: extra['start'],
-        );
-      }),
+      GoRoute(
+        path: '/booking/slots',
+        builder: (c, s) {
+          final extra = s.extra;
+          if (extra is! Map<String, dynamic>) {
+            // phòng thủ
+            throw StateError('Missing route extra for /booking/slots');
+          }
+
+          final shop = extra['shop'] as int;
+          final stylist = extra['stylist'] as int;
+
+          // Hỗ trợ mới: danh sách dịch vụ
+          final List<ServiceModel> services =
+              (extra['services'] as List?)?.cast<ServiceModel>() ?? const <ServiceModel>[];
+
+          // Hỗ trợ cũ: một dịch vụ đơn
+          final ServiceModel? serviceSingle = extra['service'] as ServiceModel?;
+
+          // Đảm bảo luôn có ít nhất 1 dịch vụ để truyền xuống
+          final ServiceModel ensuredSingle =
+              serviceSingle ?? (services.isNotEmpty ? services.first : throw StateError('No service selected'));
+
+          return SlotPickScreen(
+            shop: shop,
+            stylist: stylist,
+            service: ensuredSingle,   // giữ tương thích cũ
+            services: services.isNotEmpty ? services : null, // truyền list nếu có
+          );
+        },
+      ),
+      GoRoute(
+        path: '/booking/confirm',
+        builder: (c, s) {
+          // Đồng bộ với payload bạn truyền từ slot_pick_screen:
+          // { shop, stylist, services (list), service (fallback), start (DateTime),
+          //   total_duration_min, total_price }
+          final extra = s.extra as Map<String, dynamic>?;
+          return BookingConfirmScreen.fromExtra(extra);
+        },
+      ),
       GoRoute(
         path: '/bookings/me',
         builder: (context, state) => const MyBookingsScreen(),

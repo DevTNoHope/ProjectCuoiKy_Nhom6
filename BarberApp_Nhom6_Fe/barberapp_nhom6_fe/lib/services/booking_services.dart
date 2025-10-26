@@ -1,5 +1,6 @@
 // lib/services/booking_services.dart
 import 'package:dio/dio.dart';
+import '../config/api_config.dart';
 import '../utils/secure_store.dart';
 import '../models/booking_models.dart';
 
@@ -7,7 +8,7 @@ class ApiBase {
   final Dio _dio;
   final SecureStore _store = SecureStore();
   ApiBase({Dio? dio}): _dio = dio ?? Dio(BaseOptions(
-    baseUrl: 'http://192.168.1.27:8000', // ví dụ 192.168.1.8
+    baseUrl: ApiConfig.baseUrl,
     connectTimeout: const Duration(seconds: 10),
     receiveTimeout: const Duration(seconds: 15),
   )){
