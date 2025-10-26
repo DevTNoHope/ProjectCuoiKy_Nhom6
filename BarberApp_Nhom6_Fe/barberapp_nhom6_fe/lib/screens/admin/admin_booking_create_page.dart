@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../services/booking_service.dart';
 import '../../services/shop_service.dart';
 import '../../services/stylist_service.dart';
@@ -54,7 +55,7 @@ class _AdminBookingCreatePageState extends State<AdminBookingCreatePage> {
             .map((s) => {
           "service_id": s.id,
           "price": s.price,
-          "duration_min": 30,
+          "duration_min": s.durationMin, // ✅ lấy thời lượng thật
         })
             .toList(),
         note: "Admin đặt lịch hộ khách",
@@ -151,7 +152,7 @@ class _AdminBookingCreatePageState extends State<AdminBookingCreatePage> {
               },
             ),
 
-            // 🔹 Dịch vụ (đã sửa logic hiển thị)
+            // 🔹 Dịch vụ
             ListTile(
               title: Text(
                 selectedServices.isEmpty
@@ -176,7 +177,7 @@ class _AdminBookingCreatePageState extends State<AdminBookingCreatePage> {
                             final isChecked = tempSelected.contains(s);
                             return CheckboxListTile(
                               value: isChecked,
-                              title: Text("${s.name} - ${s.price}đ"),
+                              title: Text("${s.name} - ${s.price}đ (${s.durationMin}p)"),
                               onChanged: (v) {
                                 setDialogState(() {
                                   if (v == true) {
@@ -196,8 +197,8 @@ class _AdminBookingCreatePageState extends State<AdminBookingCreatePage> {
                             Navigator.pop(context);
                             setState(() {
                               selectedServices = tempSelected;
-                              totalPrice = selectedServices.fold(
-                                  0, (sum, s) => sum + s.price);
+                              totalPrice =
+                                  selectedServices.fold(0, (sum, s) => sum + s.price);
                             });
                           },
                           child: const Text("Xong"),
@@ -211,34 +212,110 @@ class _AdminBookingCreatePageState extends State<AdminBookingCreatePage> {
 
             const SizedBox(height: 16),
 
-            // 🔹 Thời gian
+            // 🔹 Thời gian (chia nhỏ theo duration của dịch vụ)
             ElevatedButton.icon(
               icon: const Icon(Icons.access_time),
               label: Text(startTime == null
                   ? "Chọn thời gian bắt đầu"
-                  : "Bắt đầu: ${startTime.toString().substring(0, 16)}"),
+                  : "Bắt đầu: ${DateFormat('dd/MM HH:mm').format(startTime!)}"),
               onPressed: () async {
-                final dt = await showDatePicker(
+                if (selectedStylist == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Hãy chọn stylist trước')),
+                  );
+                  return;
+                }
+                if (selectedServices.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Hãy chọn ít nhất 1 dịch vụ')),
+                  );
+                  return;
+                }
+
+                final pickedDate = await showDatePicker(
                   context: context,
                   initialDate: DateTime.now(),
                   firstDate: DateTime.now(),
                   lastDate: DateTime.now().add(const Duration(days: 30)),
                 );
-                if (dt != null) {
-                  final t = await showTimePicker(
-                      context: context, initialTime: TimeOfDay.now());
-                  if (t != null) {
-                    setState(() => startTime =
-                        DateTime(dt.year, dt.month, dt.day, t.hour, t.minute));
-                    setState(() =>
-                    endTime = startTime!.add(const Duration(hours: 1)));
+                if (pickedDate == null) return;
+                final dateStr = DateFormat('yyyy-MM-dd').format(pickedDate);
+
+                try {
+                  final slots = await _bookingSvc.getAvailableSlots(
+                      selectedStylist!.id, dateStr);
+                  if (slots.isEmpty) {
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content:
+                          Text('Thợ này nghỉ hoặc kín lịch ngày này')),
+                    );
+                    return;
                   }
+
+                  // ✅ tổng thời lượng của dịch vụ
+                  final totalDuration = selectedServices.fold<int>(
+                      0, (sum, s) => sum + (s.durationMin ?? 30));
+
+                  // chia slot
+                  final choices = <DateTime>[];
+                  for (final s in slots) {
+                    final st = DateTime.parse(s['start']!);
+                    final en = DateTime.parse(s['end']!);
+                    DateTime cur = st;
+                    while (cur.add(Duration(minutes: totalDuration)).isBefore(en)) {
+                      choices.add(cur);
+                      cur = cur.add(const Duration(minutes: 15));
+                    }
+                  }
+
+                  if (choices.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text('Không đủ thời gian trống cho dịch vụ đã chọn')),
+                    );
+                    return;
+                  }
+
+                  final chosen = await showDialog<DateTime>(
+                    context: context,
+                    builder: (_) => SimpleDialog(
+                      title: const Text("Chọn giờ bắt đầu"),
+                      children: choices
+                          .map((t) => SimpleDialogOption(
+                        onPressed: () => Navigator.pop(context, t),
+                        child: Text(DateFormat('HH:mm').format(t)),
+                      ))
+                          .toList(),
+                    ),
+                  );
+
+                  if (chosen != null) {
+                    setState(() {
+                      startTime = chosen;
+                      endTime = chosen.add(Duration(minutes: totalDuration));
+                    });
+                  }
+                } catch (e) {
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Không lấy được giờ trống: $e')),
+                  );
                 }
               },
             ),
+            const SizedBox(height: 8),
+
+            // ✅ Giờ kết thúc dự kiến
+            if (endTime != null)
+              Text(
+                "⏰ Kết thúc dự kiến: ${DateFormat('dd/MM HH:mm').format(endTime!)}",
+                style: const TextStyle(fontSize: 16, color: Colors.grey),
+              ),
+
             const SizedBox(height: 20),
 
-            // Tổng tiền
             Text(
               "💰 Tổng tiền: ${totalPrice.toStringAsFixed(0)}đ",
               style:

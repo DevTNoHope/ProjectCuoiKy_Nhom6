@@ -41,7 +41,7 @@ class BookingService {
           },
         ),
         data: {
-          "user_id": userId, // 👈 cho phép admin đặt thay user
+          "user_id": userId,
           "shop_id": shopId,
           "stylist_id": stylistId,
           "start_dt": startDt,
@@ -106,6 +106,29 @@ class BookingService {
       print("✅ Delete response: ${res.statusCode}");
     } on DioException catch (e) {
       print("❌ Delete error: ${e.response?.data}");
+      rethrow;
+    }
+  }
+
+  // 🆕 ✅ Lấy danh sách khung giờ trống của stylist (cho AdminBookingCreatePage)
+  Future<List<Map<String, String>>> getAvailableSlots(int stylistId, String date) async {
+    final token = await _store.getToken();
+    try {
+      final res = await _dio.get(
+        '/bookings/stylist/$stylistId/available',
+        queryParameters: {'date': date},
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+
+      final data = (res.data as List).cast<Map<String, dynamic>>();
+      return data
+          .map((e) => {
+        'start': e['start'] as String,
+        'end': e['end'] as String,
+      })
+          .toList();
+    } on DioException catch (e) {
+      print("❌ Get available slots error: ${e.response?.data}");
       rethrow;
     }
   }
