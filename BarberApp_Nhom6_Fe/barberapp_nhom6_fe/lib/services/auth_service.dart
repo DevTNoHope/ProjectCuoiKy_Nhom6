@@ -1,6 +1,7 @@
 // lib/services/auth_service.dart
 import 'package:dio/dio.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
+import '../config/api_config.dart';
 import '../utils/secure_store.dart';
 import '../models/auth_models.dart';
 
@@ -8,9 +9,7 @@ class AuthService {
   final Dio _dio;
   final SecureStore _store;
 
-  // Đổi BASE_URL theo server của bạn
-  static const String BASE_URL = 'http://192.168.1.27:8000'; // emulator Android -> host
-  // Nếu chạy máy thật cùng LAN, đổi thành IP máy: http://192.168.x.x:8000
+  static const String BASE_URL = ApiConfig.baseUrl;
 
   AuthService({Dio? dio, SecureStore? store})
       : _dio = dio ??

@@ -1,157 +1,220 @@
-// lib/screens/booking/booking_confirm_screen.dart
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
-import '../../models/booking_models.dart';
+import '../../models/booking_models.dart';   // BookingCreateReq, ServiceModel
 import '../../services/booking_services.dart';
 
 class BookingConfirmScreen extends StatefulWidget {
-  final int shop;
-  final int stylist;
-  final ServiceModel service;
-  /// start: thời điểm user chọn ở màn SlotPick.
-  /// Ở SlotPick bạn nên truyền start là LOCAL hoặc UTC đều được,
-  /// dưới đây mình chuẩn hoá: nếu chưa là UTC thì mới toUtc().
-  final DateTime start;
+  final int shopId;
+  final int stylistId;
+  final List<ServiceModel> services;   // danh sách dịch vụ đã chọn
+  final DateTime startLocal;           // giờ bắt đầu (Local time)
+  final int totalDurationMin;          // tổng phút (đã nhận từ slot)
+  final int totalPrice;                // tổng tiền (đã nhận từ slot)
 
   const BookingConfirmScreen({
     super.key,
-    required this.shop,
-    required this.stylist,
-    required this.service,
-    required this.start,
+    required this.shopId,
+    required this.stylistId,
+    required this.services,
+    required this.startLocal,
+    required this.totalDurationMin,
+    required this.totalPrice,
   });
+
+  /// Đọc từ state.extra, tương thích với payload bạn truyền từ slot_pick_screen:
+  /// {
+  ///   'shop': int, 'stylist': int,
+  ///   'services': List<ServiceModel>,
+  ///   'service': ServiceModel (fallback cũ),
+  ///   'start': DateTime,
+  ///   'total_duration_min': int,
+  ///   'total_price': int
+  /// }
+  factory BookingConfirmScreen.fromExtra(Map<String, dynamic>? extra) {
+    if (extra == null) {
+      throw StateError('Missing route extra for /booking/confirm');
+    }
+    final int shop = (extra['shop'] ?? extra['shopId']) as int;
+    final int stylist = (extra['stylist'] ?? extra['stylistId']) as int;
+
+    // start có dạng DateTime (đã truyền từ slot)
+    late final DateTime startLocal;
+    if (extra['start'] is DateTime) {
+      startLocal = extra['start'] as DateTime;
+    } else if (extra['start_time'] is String) {
+      startLocal = DateTime.parse(extra['start_time'] as String);
+    } else {
+      throw StateError('Missing "start" in route extra');
+    }
+
+    // danh sách dịch vụ
+    List<ServiceModel> services;
+    if (extra['services'] is List<ServiceModel>) {
+      services = (extra['services'] as List<ServiceModel>);
+    } else if (extra['services'] is List) {
+      services = (extra['services'] as List).cast<ServiceModel>();
+    } else if (extra['service'] is ServiceModel) {
+      services = [extra['service'] as ServiceModel];
+    } else {
+      services = const <ServiceModel>[];
+    }
+    if (services.isEmpty) {
+      throw StateError('No service selected');
+    }
+
+    // tổng thời lượng & tổng tiền
+    final int totalDurationMin =
+        (extra['total_duration_min'] as int?) ??
+            services.fold<int>(0, (a, b) => a + b.durationMin);
+
+    final int totalPrice =
+        (extra['total_price'] as int?) ??
+            services.fold<int>(0, (a, b) => a + b.price);
+
+    return BookingConfirmScreen(
+      shopId: shop,
+      stylistId: stylist,
+      services: services,
+      startLocal: startLocal,
+      totalDurationMin: totalDurationMin,
+      totalPrice: totalPrice,
+    );
+  }
 
   @override
   State<BookingConfirmScreen> createState() => _BookingConfirmScreenState();
 }
 
 class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
-  final _noteCtl = TextEditingController();
-  final _fmtDateTime = DateFormat('yyyy-MM-dd HH:mm');
-  bool _loading = false;
+  final _bookingSvc = BookingService();
+  bool _submitting = false;
 
-  // Dùng service chung của dự án bạn
-  final _svc = BookingService();
+  late final DateTime _endLocal =
+  widget.startLocal.add(Duration(minutes: widget.totalDurationMin));
 
-  @override
-  void dispose() {
-    _noteCtl.dispose();
-    super.dispose();
+  // chuyển sang UTC ISO-8601 theo model: startDtUtc / endDtUtc
+  DateTime get _startDtUtc => widget.startLocal.toUtc();
+  DateTime get _endDtUtc => _endLocal.toUtc();
+
+  String _fmtDateTime(DateTime dt) {
+    final h = dt.hour.toString().padLeft(2, '0');
+    final m = dt.minute.toString().padLeft(2, '0');
+    final d = dt.day.toString().padLeft(2, '0');
+    final mo = dt.month.toString().padLeft(2, '0');
+    final y = dt.year.toString();
+    return '$h:$m • $d/$mo/$y';
   }
 
-  String _fmtLocal(DateTime dt) => _fmtDateTime.format(dt.toLocal());
+  Future<void> _confirm() async {
+    if (_submitting) return;
+    setState(() => _submitting = true);
 
-  Future<void> _submit() async {
-    setState(() => _loading = true);
     try {
-      // 1) Chuẩn hoá thời gian:
-      //    - Hiển thị: LOCAL
-      //    - Gửi BE: UTC ISO
-      final startLocal = widget.start.toLocal();
-      final startUtc = widget.start.isUtc ? widget.start : widget.start.toUtc();
-
-      final durationMin = widget.service.durationMin;
-      final endLocal = startLocal.add(Duration(minutes: durationMin));
-      final endUtc = startUtc.add(Duration(minutes: durationMin));
-
-      // 2) Lấy giá từ ServiceModel (đã parse an toàn ở booking_models.dart)
-      final price = widget.service.price;
-
-      // (Debug) Cảnh báo nếu giá bằng 0 để bạn biết ngay từ UI
-      if (price == 0) {
-        // Không chặn gửi, chỉ cảnh báo. Nếu muốn chặn, return sau khi show SnackBar
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('⚠️ Giá dịch vụ đang = 0. Kiểm tra ServiceModel.price!'),
-          ),
-        );
-      }
-
-      // 3) Tạo payload đúng schema BE
+      // BookingCreateReq của bạn yêu cầu:
+      // shopId, stylistId, startDtUtc, endDtUtc, services (List<int>), totalPrice
+      final items = widget.services
+          .map((s) => BookingServiceItemReq(
+        serviceId: s.id,
+        price: s.price,
+        durationMin: s.durationMin,
+      ))
+          .toList();
       final req = BookingCreateReq(
-        shopId: widget.shop,
-        stylistId: widget.stylist,
-        startDtUtc: startUtc,
-        endDtUtc: endUtc,
-        totalPrice: price,
-        note: _noteCtl.text.trim().isEmpty ? null : _noteCtl.text.trim(),
-        services: [
-          BookingServiceItemReq(
-            serviceId: widget.service.id,
-            price: price,
-            durationMin: durationMin,
-          ),
-        ],
+        shopId: widget.shopId,
+        stylistId: widget.stylistId,
+        startDtUtc: _startDtUtc,
+        endDtUtc: _endDtUtc,
+        services: items,
+        totalPrice: widget.totalPrice,
       );
 
-      // 4) Gọi API
-      await _svc.create(req);
+      await _bookingSvc.create(req);
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Đặt lịch thành công!')),
       );
       context.go('/bookings/me');
-    } on DioException catch (e) {
-      final d = e.response?.data;
-      final msg =
-      (d is Map && d['detail'] != null) ? d['detail'].toString() : e.toString();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Đặt lịch thất bại: $e')),
+      );
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) setState(() => _submitting = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final startLocal = widget.start.toLocal();
-    final durationMin = widget.service.durationMin;
+    final startStr = _fmtDateTime(widget.startLocal);
+    final endStr = _fmtDateTime(_endLocal);
+    final totalMin = widget.totalDurationMin;
+    final totalPrice = widget.totalPrice;
 
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(
-          onPressed: () => context.pop(),
-          icon: const Icon(Icons.arrow_back),
-        ),
         title: const Text('Xác nhận đặt lịch'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Dịch vụ: ${widget.service.name} ($durationMin phút)'),
-            const SizedBox(height: 6),
-            Text('Bắt đầu: ${_fmtLocal(startLocal)}'),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _noteCtl,
-              maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: 'Ghi chú (tuỳ chọn)',
-                border: UnderlineInputBorder(),
-              ),
-            ),
-            const Spacer(),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _loading ? null : _submit,
-                child: _loading
-                    ? const SizedBox(
-                    width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Text('Xác nhận'),
-              ),
-            ),
-          ],
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.pop(),
         ),
+      ),
+      body: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            color: Theme.of(context).colorScheme.surfaceContainerHighest, // tránh cảnh báo deprecated
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Bắt đầu: $startStr', style: const TextStyle(fontWeight: FontWeight.w600)),
+                Text('Kết thúc: $endStr', style: const TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 6),
+                Text('Tổng thời lượng: $totalMin phút'),
+                Text('Tổng tiền: $totalPrice đ'),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          Expanded(
+            child: ListView.separated(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              itemCount: widget.services.length,
+              separatorBuilder: (_, __) => const Divider(height: 1),
+              itemBuilder: (_, i) {
+                final s = widget.services[i];
+                return ListTile(
+                  leading: const Icon(Icons.design_services_outlined),
+                  title: Text(s.name),
+                  subtitle: Text('${s.durationMin} phút'),
+                  trailing: Text('${s.price} đ'),
+                );
+              },
+            ),
+          ),
+
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  icon: _submitting
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.check),
+                  label: Text(_submitting
+                      ? 'Đang gửi...'
+                      : 'Xác nhận • ${widget.services.length} DV'),
+                  onPressed: _submitting ? null : _confirm,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
