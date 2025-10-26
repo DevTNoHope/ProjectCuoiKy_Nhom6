@@ -9,7 +9,7 @@ class AuthService {
   final SecureStore _store;
 
   // Đổi BASE_URL theo server của bạn
-  static const String BASE_URL = 'http://192.168.1.10:8000'; // emulator Android -> host
+  static const String BASE_URL = 'http://192.168.1.9:8000'; // emulator Android -> host
   // Nếu chạy máy thật cùng LAN, đổi thành IP máy: http://192.168.x.x:8000
 
   AuthService({Dio? dio, SecureStore? store})

@@ -13,7 +13,7 @@ class MyBookingsScreen extends StatefulWidget {
 }
 
 class _MyBookingsScreenState extends State<MyBookingsScreen> {
-  final _svc = BookingService(); // dùng service có sẵn của bạn
+  final _svc = BookingService();
   late Future<List<Map<String, dynamic>>> _f;
 
   final _dateFmt = DateFormat('yyyy-MM-dd HH:mm');
@@ -23,7 +23,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
   @override
   void initState() {
     super.initState();
-    _f = _svc.getMyBookings(); // hàm này của bạn đã có sẵn
+    _f = _svc.getMyBookings();
   }
 
   // --- Helpers ---
@@ -36,93 +36,96 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
     return 0;
   }
 
-  /// Parse ISO; nếu không có timezone thì mặc định coi là UTC
   DateTime _parseIsoAssumeUtc(String s) {
     final dt = DateTime.parse(s);
     if (dt.isUtc) return dt;
     return DateTime.utc(
-      dt.year,
-      dt.month,
-      dt.day,
-      dt.hour,
-      dt.minute,
-      dt.second,
-      dt.millisecond,
-      dt.microsecond,
+      dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second, dt.millisecond, dt.microsecond,
     );
   }
 
-  String _fmtLocal(String iso) {
-    final local = _parseIsoAssumeUtc(iso).toLocal();
-    return _dateFmt.format(local);
-  }
-
-  String _fmtLocalShort(String iso) {
-    final local = _parseIsoAssumeUtc(iso).toLocal();
-    return DateFormat('HH:mm').format(local);
-  }
+  String _fmtLocal(String iso) => _dateFmt.format(_parseIsoAssumeUtc(iso).toLocal());
+  String _fmtLocalShort(String iso) => DateFormat('HH:mm').format(_parseIsoAssumeUtc(iso).toLocal());
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          onPressed: () => context.pop(),
-          icon: const Icon(Icons.arrow_back),
-        ),
-        title: const Text('Lịch của tôi'),
-      ),
-      body: FutureBuilder<List<Map<String, dynamic>>>(
-        future: _f,
-        builder: (_, snap) {
-          if (snap.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
+    return PopScope(
+      canPop: true,
+      onPopInvoked: (didPop) {
+        if (!didPop) {
+          if (context.canPop()) {
+            context.pop();
+          } else {
+            // fallback khi trang này là root trong stack
+            context.go('/home'); // đổi route này theo app của bạn
           }
-          if (snap.hasError) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Text('Lỗi tải lịch: ${snap.error}'),
-              ),
-            );
-          }
-          final items = snap.data ?? const <Map<String, dynamic>>[];
-          if (items.isEmpty) {
-            return const Center(child: Text('Chưa có lịch đặt nào'));
-          }
-
-          return ListView.separated(
-            itemCount: items.length,
-            separatorBuilder: (_, __) => const Divider(height: 1),
-            itemBuilder: (_, i) {
-              final b = items[i];
-
-              final startStr = (b['start_dt'] ?? b['start_time']) as String;
-              final endStr = (b['end_dt'] ?? b['end_time']) as String;
-
-              // LUÔN hiển thị LOCAL:
-              final startText = _fmtLocal(startStr);
-              final endText = _fmtLocalShort(endStr);
-
-              final shopId = b['shop_id'];
-              final stylistId = b['stylist_id'];
-              final status = (b['status'] ?? '').toString();
-
-              final money = _moneyFmt.format(_asNum(b['total_price']));
-
-              return ListTile(
-                leading: const Icon(Icons.event_note),
-                title: Text('$startText  →  $endText'),
-                subtitle: Text('Cửa hàng #$shopId • Thợ #$stylistId • $status'),
-                trailing: Text(money, style: const TextStyle(fontWeight: FontWeight.w600)),
-              );
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/home'); // fallback
+              }
             },
-          );
-        },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => context.go('/booking/start'),
-        child: const Icon(Icons.add),
+          ),
+          title: const Text('Lịch của tôi'),
+        ),
+        body: FutureBuilder<List<Map<String, dynamic>>>(
+          future: _f,
+          builder: (_, snap) {
+            if (snap.connectionState != ConnectionState.done) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snap.hasError) {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text('Lỗi tải lịch: ${snap.error}'),
+                ),
+              );
+            }
+            final items = snap.data ?? const <Map<String, dynamic>>[];
+            if (items.isEmpty) {
+              return const Center(child: Text('Chưa có lịch đặt nào'));
+            }
+
+            return ListView.separated(
+              itemCount: items.length,
+              separatorBuilder: (_, __) => const Divider(height: 1),
+              itemBuilder: (_, i) {
+                final b = items[i];
+
+                final startStr = (b['start_dt'] ?? b['start_time']) as String;
+                final endStr = (b['end_dt'] ?? b['end_time']) as String;
+
+                final startText = _fmtLocal(startStr);
+                final endText = _fmtLocalShort(endStr);
+
+                final shopId = b['shop_id'];
+                final stylistId = b['stylist_id'];
+                final status = (b['status'] ?? '').toString();
+                final money = _moneyFmt.format(_asNum(b['total_price']));
+
+                return ListTile(
+                  leading: const Icon(Icons.event_note),
+                  title: Text('$startText  →  $endText'),
+                  subtitle: Text('Cửa hàng #$shopId • Thợ #$stylistId • $status'),
+                  trailing: Text(money, style: const TextStyle(fontWeight: FontWeight.w600)),
+                );
+              },
+            );
+          },
+        ),
+        floatingActionButton: FloatingActionButton(
+          // DÙNG push để có thể back về MyBookings sau khi tạo lịch
+          onPressed: () => context.push('/booking/start'),
+          child: const Icon(Icons.add),
+        ),
       ),
     );
   }

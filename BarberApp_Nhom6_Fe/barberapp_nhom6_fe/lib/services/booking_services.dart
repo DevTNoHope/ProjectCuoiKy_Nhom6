@@ -7,7 +7,7 @@ class ApiBase {
   final Dio _dio;
   final SecureStore _store = SecureStore();
   ApiBase({Dio? dio}): _dio = dio ?? Dio(BaseOptions(
-    baseUrl: 'http://192.168.1.10:8000', // ví dụ 192.168.1.8
+    baseUrl: 'http://192.168.1.9:8000', // ví dụ 192.168.1.8
     connectTimeout: const Duration(seconds: 10),
     receiveTimeout: const Duration(seconds: 15),
   )){
