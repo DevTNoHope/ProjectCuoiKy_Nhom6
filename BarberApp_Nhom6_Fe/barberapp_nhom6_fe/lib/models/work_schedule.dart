@@ -4,6 +4,7 @@ class WorkSchedule {
   final String weekday; // Mon, Tue, Wed...
   final String startTime;
   final String endTime;
+  final String? stylistName;
 
   WorkSchedule({
     required this.id,
@@ -11,6 +12,7 @@ class WorkSchedule {
     required this.weekday,
     required this.startTime,
     required this.endTime,
+    this.stylistName,
   });
 
   factory WorkSchedule.fromJson(Map<String, dynamic> json) {
@@ -20,6 +22,7 @@ class WorkSchedule {
       weekday: json['weekday'] ?? '',
       startTime: json['start_time'] ?? '',
       endTime: json['end_time'] ?? '',
+      stylistName: json['stylist']?['name'],
     );
   }
 
