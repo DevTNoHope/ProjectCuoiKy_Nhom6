@@ -14,7 +14,7 @@ class _StylistListScreenState extends State<StylistListScreen>{
   @override Widget build(BuildContext context){
     return Scaffold(appBar: AppBar(leading: IconButton(
       icon: const Icon(Icons.arrow_back),
-      onPressed: () => context.pop(),
+      onPressed: () => context.go('/shops'),
     ),title: const Text('Chọn thợ')),
         body: FutureBuilder<List<Stylist>>(future:_f,builder:(_,snap){
           if(!snap.hasData) return const Center(child:CircularProgressIndicator());

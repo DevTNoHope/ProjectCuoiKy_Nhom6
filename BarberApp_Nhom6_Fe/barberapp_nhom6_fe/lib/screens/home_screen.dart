@@ -82,6 +82,11 @@ class HomeScreen extends StatelessWidget {
               onTap: () => context.go('/services'), // nếu bạn có route /services
             ),
             actionButton(
+              icon: Icons.person_search,
+              label: 'Gợi ý kiểu tóc',
+              onTap: () => context.go('/ai/try-on'), // mở lại chọn shop rồi thợ
+            ),
+            actionButton(
               icon: Icons.help_outline,
               label: 'Hỗ trợ',
               onTap: () => ScaffoldMessenger.of(context).showSnackBar(

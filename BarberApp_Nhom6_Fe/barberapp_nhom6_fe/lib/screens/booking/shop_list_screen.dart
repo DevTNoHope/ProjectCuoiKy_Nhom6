@@ -72,7 +72,7 @@ class _ShopListScreenState extends State<ShopListScreen> {
         title: const Text('Chọn cửa hàng'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
+          onPressed: () => context.go('/home'),
         ),
         actions: [
           IconButton(

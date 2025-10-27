@@ -42,7 +42,7 @@ class _ServicePickScreenState extends State<ServicePickScreen> {
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
+          onPressed: () => context.go('/shops/${widget.shopId}/stylists'),
         ),
         title: const Text('Chọn dịch vụ'),
         actions: [

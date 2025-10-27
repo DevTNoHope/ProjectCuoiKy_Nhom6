@@ -2,6 +2,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import '../models/booking_models.dart';
+import '../screens/ai/hair_try_on_screen.dart';
 import '../screens/booking/booking_confirm_screen.dart';
 import '../screens/booking/my_bookings_screen.dart';
 import '../screens/booking/service_pick_screen.dart';
@@ -107,6 +108,11 @@ class AppRouter {
           return const ShopListScreen(); // nếu đã import file shop_list_screen.dart
         },
       ),
+      GoRoute(
+        path: '/ai/try-on',
+        builder: (context, state) => const HairTryOnScreen(),
+      ),
+
     ],
     redirect: (context, state) async {
       // Chỉ redirect khi ở /splash để tránh loop

@@ -67,8 +67,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          onPressed: () => context.pop(),
-          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/home'),
+          icon: const Icon(Icons.home),
         ),
         title: const Text('Lịch của tôi'),
       ),
