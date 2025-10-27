@@ -108,13 +108,23 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                   money,
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
+                onTap: () {
+                  final bookingId = b['id'];
+                  if (bookingId != null) {
+                    context.push('/booking/$bookingId');
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Không xác định được mã booking')),
+                    );
+                  }
+                },
               );
             },
           );
         },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => context.go('/booking/start'),
+        onPressed: () => context.go('/shops'),
         child: const Icon(Icons.add),
       ),
     );

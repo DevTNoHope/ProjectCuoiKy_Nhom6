@@ -11,7 +11,9 @@ from app.models.schedule import WorkSchedule
 from app.models.user import User
 from app.models.shop import Shop
 from app.schemas.booking import BookingOut, BookingCreate, BookingUpdate, BookingStatus
-from app.core.mailer import send_booking_email
+from app.schemas.booking import BookingDetailOut, BookingCancelIn 
+from app.core.mailer import send_booking_email  # 🟢 module gửi email
+
 
 router = APIRouter(prefix="/bookings", tags=["bookings"])
 
@@ -331,3 +333,92 @@ def get_stylist_available_slots(
         })
 
     return available
+
+
+@router.get("/{booking_id}", response_model=BookingDetailOut)
+def get_booking_detail(
+    booking_id: int,
+    db: Session = Depends(get_db),
+    me: User = Depends(get_current_user),
+):
+    booking = (
+        db.query(Booking)
+        .options(
+            joinedload(Booking.shop),
+            joinedload(Booking.stylist),
+            joinedload(Booking.services).joinedload(BookingService.service),
+        )
+        .filter(Booking.id == booking_id)
+        .first()
+    )
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    # Quyền: Admin xem tất cả; User chỉ xem booking của mình
+    if getattr(me, "role", "").lower() != "admin" and booking.user_id != me.id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    # Build payload chi tiết theo BookingDetailOut
+    detail = {
+        "id": booking.id,
+        "user_id": booking.user_id,
+        "shop_id": booking.shop_id,
+        "stylist_id": booking.stylist_id,
+        "status": booking.status,
+        "start_dt": booking.start_dt,
+        "end_dt": booking.end_dt,
+        "total_price": booking.total_price,
+        "note": booking.note,
+        "created_at": booking.created_at,
+        "shop_name": booking.shop.name if booking.shop else None,
+        "stylist_name": booking.stylist.name if booking.stylist else None,
+        "services": [
+            {
+                "service_id": bs.service_id,
+                "price": bs.price,
+                "duration_min": bs.duration_min,
+                "service_name": bs.service.name if getattr(bs, "service", None) else None,
+            }
+            for bs in (booking.services or [])
+        ],
+    }
+
+    return BookingDetailOut.model_validate(detail)
+
+
+@router.post("/{booking_id}/cancel", response_model=BookingOut)
+def cancel_my_booking(
+    booking_id: int,
+    payload: BookingCancelIn | None = None,
+    db: Session = Depends(get_db),
+    me: User = Depends(get_current_user),
+):
+    # Tìm booking
+    booking = db.query(Booking).filter(Booking.id == booking_id).first()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    # Chỉ cho chính chủ hủy
+    if booking.user_id != me.id:
+        raise HTTPException(status_code=403, detail="You can only cancel your own booking")
+
+    # Không hủy nếu đã completed / cancelled
+    if booking.status in [BookingStatus.completed, BookingStatus.cancelled]:
+        raise HTTPException(status_code=400, detail=f"Booking already {booking.status}")
+
+    # Không hủy nếu đã tới giờ bắt đầu (hoặc quá khứ)
+    # Chuẩn hoá về UTC để so sánh an toàn
+    start_utc = booking.start_dt.replace(tzinfo=timezone.utc) if booking.start_dt.tzinfo is None else booking.start_dt.astimezone(timezone.utc)
+    now_utc = datetime.now(timezone.utc)
+    if start_utc <= now_utc:
+        raise HTTPException(status_code=400, detail="Cannot cancel after the booking start time")
+
+    # Cập nhật trạng thái + lưu note hủy nếu có
+    booking.status = BookingStatus.cancelled
+    if payload and payload.reason:
+        # nối thêm lý do vào note cho dễ truy vết
+        booking.note = (booking.note + "\n[Cancel reason] " + payload.reason) if booking.note else "[Cancel reason] " + payload.reason
+
+    db.commit()
+    db.refresh(booking)
+    return booking

@@ -110,3 +110,29 @@ def delete_reply(reply_id: int, db: Session = Depends(get_db)):
     db.delete(reply)
     db.commit()
     return {"message": "Reply deleted"}
+
+@router.get("/booking/{booking_id}", response_model=ReviewWithReplies)
+def get_review_by_booking(
+    booking_id: int,
+    db: Session = Depends(get_db),
+    # me: User = Depends(get_current_user),  # bật nếu muốn kiểm tra quyền
+):
+    """
+    Lấy review gắn với 1 booking, kèm danh sách reply (nếu có).
+    Mặc định trả review mới nhất nếu có nhiều (trong thực tế nên ràng buộc 1 booking chỉ có 1 review).
+    """
+    # Nếu muốn giới hạn chỉ owner xem được, có thể join sang Booking và kiểm tra me.id == booking.user_id
+    q = (
+        db.query(Review)
+        .options(joinedload(Review.replies))
+        .filter(Review.booking_id == booking_id)
+        .order_by(Review.id.desc())
+    )
+    review = q.first()
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found")
+    # Nếu kiểm tra quyền:
+    # if review.user_id != me.id and me.role.lower() != "admin":
+    #     raise HTTPException(status_code=403, detail="Forbidden")
+
+    return review
