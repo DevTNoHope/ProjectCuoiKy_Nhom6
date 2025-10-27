@@ -12,7 +12,7 @@ class _ShopListScreenState extends State<ShopListScreen>{
   @override Widget build(BuildContext context){
     return Scaffold(appBar: AppBar(leading: IconButton(
       icon: const Icon(Icons.arrow_back),
-      onPressed: () => context.pop(),
+      onPressed: () => context.go('/home'),
     ),title: const Text('Chọn cửa hàng')),
         body: FutureBuilder<List<Shop>>(future: _f, builder: (_,snap){
           if(!snap.hasData) return const Center(child:CircularProgressIndicator());

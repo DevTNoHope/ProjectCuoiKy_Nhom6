@@ -98,7 +98,7 @@ class _SlotPickScreenState extends State<SlotPickScreen> {
         title: const Text('Chọn thời gian'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
+          onPressed: () => context.go('/stylists/${widget.stylist}/services?shopId=${widget.shop}'),
         ),
       ),
       body: Column(
@@ -108,10 +108,6 @@ class _SlotPickScreenState extends State<SlotPickScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: Row(
               children: [
-                TextButton(
-                  onPressed: () => _changeDate(-1),
-                  child: const Text('← Hôm qua'),
-                ),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.center,

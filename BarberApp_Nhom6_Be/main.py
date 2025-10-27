@@ -9,7 +9,14 @@ from app.api.routers import shops, services, work_schedules
 from app.api.routers import shops, services, stylists, work_schedules
 from app.api.routers import shops, services, stylists, work_schedules, bookings
 from app.api.routers import reviews
+from pathlib import Path
+from fastapi.staticfiles import StaticFiles
+from app.api.routers.gemini_image_url import router as gemini_image_router
 app = FastAPI(title=settings.APP_NAME)
+
+
+static_root = Path(settings.AI_OUTPUT_DIR).resolve().parent
+app.mount("/static", StaticFiles(directory=static_root), name="static")
 
 # CORS cho Flutter (tuỳ cập nhật origin sau)
 app.add_middleware(
@@ -43,6 +50,9 @@ app.include_router(work_schedules.router)
 app.include_router(bookings.router)
 
 app.include_router(reviews.router)
+
+app.include_router(gemini_image_router)
+
 @app.get("/")
 def root():
     return {"app": settings.APP_NAME, "env": settings.APP_ENV}

@@ -158,7 +158,14 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
         title: const Text('Xác nhận đặt lịch'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
+          onPressed: () => context.go('/booking/slots', extra: {
+            'shop': widget.shopId,
+            'stylist': widget.stylistId,
+            // truyền danh sách dịch vụ thay vì 1 dịch vụ
+            'services': widget.services,
+            'total_duration_min': totalMin,
+            'total_price': totalPrice,
+          }),
         ),
       ),
       body: Column(
