@@ -35,7 +35,7 @@ def _to_vietnam_time(dt: datetime) -> datetime:
 def list_bookings(db: Session = Depends(get_db)):
     bookings = (
         db.query(Booking)
-        .options(joinedload(Booking.shop), joinedload(Booking.stylist))
+        .options(joinedload(Booking.shop), joinedload(Booking.stylist),joinedload(Booking.user))
         .order_by(Booking.id.desc())
         .all()
     )
@@ -45,6 +45,7 @@ def list_bookings(db: Session = Depends(get_db)):
         data = b.__dict__.copy()
         data["shop_name"] = b.shop.name if getattr(b, "shop", None) else None
         data["stylist_name"] = b.stylist.name if getattr(b, "stylist", None) else None
+        data["user_phone"] = b.user.phone if getattr(b, "user", None) else None
         result.append(data)
     return result
 

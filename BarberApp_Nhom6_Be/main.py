@@ -12,8 +12,9 @@ from app.api.routers import reviews
 from pathlib import Path
 from fastapi.staticfiles import StaticFiles
 from app.api.routers.gemini_image_url import router as gemini_image_router
-
+from app.api.routers import users
 from app.api.routers import statistics
+
 app = FastAPI(title=settings.APP_NAME)
 
 
@@ -56,6 +57,7 @@ app.include_router(reviews.router)
 app.include_router(gemini_image_router)
 
 app.include_router(statistics.router)
+app.include_router(users.router)
 @app.get("/")
 def root():
     return {"app": settings.APP_NAME, "env": settings.APP_ENV}

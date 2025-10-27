@@ -5,6 +5,7 @@ class Booking {
   final int? stylistId;
   final String? shopName;
   final String? stylistName;
+  final String? userPhone;
   final String status;
   final DateTime startDt;
   final DateTime endDt;
@@ -18,6 +19,7 @@ class Booking {
     this.stylistId,
     this.shopName,
     this.stylistName,
+    this.userPhone,
     required this.status,
     required this.startDt,
     required this.endDt,
@@ -47,6 +49,7 @@ class Booking {
       stylistId: json['stylist_id'] == null ? null : parseInt(json['stylist_id']),
       shopName: json['shop_name'],
       stylistName: json['stylist_name'],
+      userPhone: json['user_phone'],
       status: json['status'] ?? 'pending',
       startDt: DateTime.parse(json['start_dt']),
       endDt: DateTime.parse(json['end_dt']),
