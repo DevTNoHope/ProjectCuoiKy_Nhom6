@@ -4,9 +4,11 @@ import '../../services/booking_service.dart';
 import '../../services/shop_service.dart';
 import '../../services/stylist_service.dart';
 import '../../services/service_service.dart';
+import '../../services/user_service.dart';
 import '../../models/shop.dart';
 import '../../models/stylist.dart';
 import '../../models/service.dart';
+import '../../models/user.dart';
 
 class AdminBookingCreatePage extends StatefulWidget {
   const AdminBookingCreatePage({super.key});
@@ -20,16 +22,16 @@ class _AdminBookingCreatePageState extends State<AdminBookingCreatePage> {
   final _shopSvc = ShopService();
   final _stylistSvc = StylistService();
   final _serviceSvc = ServiceService();
+  final _userSvc = UserService();
 
   int? selectedUserId;
+  UserModel? selectedUser;
   Shop? selectedShop;
   Stylist? selectedStylist;
   List<Service> selectedServices = [];
   DateTime? startTime;
   DateTime? endTime;
   double totalPrice = 0;
-
-  final _userIdCtrl = TextEditingController();
 
   Future<void> _submitBooking() async {
     if (selectedUserId == null ||
@@ -55,7 +57,7 @@ class _AdminBookingCreatePageState extends State<AdminBookingCreatePage> {
             .map((s) => {
           "service_id": s.id,
           "price": s.price,
-          "duration_min": s.durationMin, // ✅ lấy thời lượng thật
+          "duration_min": s.durationMin,
         })
             .toList(),
         note: "Admin đặt lịch hộ khách",
@@ -74,31 +76,72 @@ class _AdminBookingCreatePageState extends State<AdminBookingCreatePage> {
   void _resetForm() {
     setState(() {
       selectedUserId = null;
+      selectedUser = null;
       selectedShop = null;
       selectedStylist = null;
       selectedServices = [];
       startTime = null;
       endTime = null;
       totalPrice = 0;
-      _userIdCtrl.clear();
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text("📅 Admin đặt lịch hộ khách"),
+        backgroundColor: Colors.teal,
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: ListView(
           children: [
-            const Text("👤 Nhập User ID", style: TextStyle(fontSize: 18)),
-            TextField(
-              controller: _userIdCtrl,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                hintText: "Nhập ID khách hàng...",
+            const Text("👤 Chọn khách hàng", style: TextStyle(fontSize: 18)),
+            ListTile(
+              title: Text(
+                selectedUser == null
+                    ? "Chọn khách hàng"
+                    : "${selectedUser!.phone ?? 'Không có SĐT'} - ${selectedUser!.fullName}",
               ),
-              onChanged: (v) => selectedUserId = int.tryParse(v),
+              trailing: const Icon(Icons.person),
+              onTap: () async {
+                try {
+                  final users = await _userSvc.getAll();
+                  if (users.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Không có khách hàng nào')),
+                    );
+                    return;
+                  }
+
+                  final chosen = await showDialog<UserModel>(
+                    context: context,
+                    builder: (_) => SimpleDialog(
+                      title: const Text("Chọn khách hàng"),
+                      children: users
+                          .map((u) => SimpleDialogOption(
+                        onPressed: () => Navigator.pop(context, u),
+                        child: Text(
+                          "${u.phone ?? 'Không có SĐT'} - ${u.fullName}",
+                        ),
+                      ))
+                          .toList(),
+                    ),
+                  );
+
+                  if (chosen != null) {
+                    setState(() {
+                      selectedUser = chosen;
+                      selectedUserId = chosen.id;
+                    });
+                  }
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Lỗi tải khách hàng: $e')),
+                  );
+                }
+              },
             ),
             const SizedBox(height: 16),
 
@@ -177,7 +220,8 @@ class _AdminBookingCreatePageState extends State<AdminBookingCreatePage> {
                             final isChecked = tempSelected.contains(s);
                             return CheckboxListTile(
                               value: isChecked,
-                              title: Text("${s.name} - ${s.price}đ (${s.durationMin}p)"),
+                              title: Text(
+                                  "${s.name} - ${s.price}đ (${s.durationMin}p)"),
                               onChanged: (v) {
                                 setDialogState(() {
                                   if (v == true) {
@@ -197,8 +241,8 @@ class _AdminBookingCreatePageState extends State<AdminBookingCreatePage> {
                             Navigator.pop(context);
                             setState(() {
                               selectedServices = tempSelected;
-                              totalPrice =
-                                  selectedServices.fold(0, (sum, s) => sum + s.price);
+                              totalPrice = selectedServices.fold(
+                                  0, (sum, s) => sum + s.price);
                             });
                           },
                           child: const Text("Xong"),
@@ -209,10 +253,9 @@ class _AdminBookingCreatePageState extends State<AdminBookingCreatePage> {
                 );
               },
             ),
-
             const SizedBox(height: 16),
 
-            // 🔹 Thời gian (chia nhỏ theo duration của dịch vụ)
+            // 🔹 Thời gian
             ElevatedButton.icon(
               icon: const Icon(Icons.access_time),
               label: Text(startTime == null
@@ -254,17 +297,17 @@ class _AdminBookingCreatePageState extends State<AdminBookingCreatePage> {
                     return;
                   }
 
-                  // ✅ tổng thời lượng của dịch vụ
                   final totalDuration = selectedServices.fold<int>(
                       0, (sum, s) => sum + (s.durationMin ?? 30));
 
-                  // chia slot
                   final choices = <DateTime>[];
                   for (final s in slots) {
                     final st = DateTime.parse(s['start']!);
                     final en = DateTime.parse(s['end']!);
                     DateTime cur = st;
-                    while (cur.add(Duration(minutes: totalDuration)).isBefore(en)) {
+                    while (cur
+                        .add(Duration(minutes: totalDuration))
+                        .isBefore(en)) {
                       choices.add(cur);
                       cur = cur.add(const Duration(minutes: 15));
                     }
@@ -273,7 +316,8 @@ class _AdminBookingCreatePageState extends State<AdminBookingCreatePage> {
                   if (choices.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                          content: Text('Không đủ thời gian trống cho dịch vụ đã chọn')),
+                          content: Text(
+                              'Không đủ thời gian trống cho dịch vụ đã chọn')),
                     );
                     return;
                   }
@@ -307,13 +351,11 @@ class _AdminBookingCreatePageState extends State<AdminBookingCreatePage> {
             ),
             const SizedBox(height: 8),
 
-            // ✅ Giờ kết thúc dự kiến
             if (endTime != null)
               Text(
                 "⏰ Kết thúc dự kiến: ${DateFormat('dd/MM HH:mm').format(endTime!)}",
                 style: const TextStyle(fontSize: 16, color: Colors.grey),
               ),
-
             const SizedBox(height: 20),
 
             Text(
