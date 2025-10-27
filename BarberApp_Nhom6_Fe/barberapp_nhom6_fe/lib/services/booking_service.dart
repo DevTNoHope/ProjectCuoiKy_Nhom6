@@ -79,6 +79,22 @@ class BookingService {
     }
   }
 
+  // 🔵 ✅ Đánh dấu hoàn thành booking
+  Future<void> complete(int id) async {
+    final token = await _store.getToken();
+    try {
+      final res = await _dio.put(
+        '/bookings/$id',
+        data: {'status': 'completed'},
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      print("✅ Complete response: ${res.statusCode}");
+    } on DioException catch (e) {
+      print("❌ Complete error: ${e.response?.data}");
+      rethrow;
+    }
+  }
+
   // 🔴 Hủy booking
   Future<void> cancel(int id) async {
     final token = await _store.getToken();

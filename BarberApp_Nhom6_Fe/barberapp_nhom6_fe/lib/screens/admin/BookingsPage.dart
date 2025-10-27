@@ -28,7 +28,6 @@ class _BookingsPageState extends State<BookingsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        // title: const Text('Duyệt / Hủy Booking'),
         actions: [
           IconButton(icon: const Icon(Icons.refresh), onPressed: _refresh),
           PopupMenuButton<String>(
@@ -92,7 +91,6 @@ class _BookingsPageState extends State<BookingsPage> {
                     ),
                     onTap: () => _showDetailDialog(context, b),
                     trailing: PopupMenuButton<String>(
-                      // ✅ Bổ sung phản hồi người dùng
                       onSelected: (value) async {
                         try {
                           if (value == 'approve') {
@@ -104,6 +102,11 @@ class _BookingsPageState extends State<BookingsPage> {
                             await _service.cancel(b.id);
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text('❌ Hủy booking thành công')),
+                            );
+                          } else if (value == 'complete') {
+                            await _service.complete(b.id);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('🎉 Đã đánh dấu hoàn thành')),
                             );
                           } else if (value == 'delete') {
                             await _service.delete(b.id);
@@ -123,6 +126,11 @@ class _BookingsPageState extends State<BookingsPage> {
                           const PopupMenuItem(
                             value: 'approve',
                             child: Text('✅ Duyệt'),
+                          ),
+                        if (b.status == 'approved')
+                          const PopupMenuItem(
+                            value: 'complete',
+                            child: Text('🎉 Hoàn thành'),
                           ),
                         if (b.status != 'cancelled')
                           const PopupMenuItem(

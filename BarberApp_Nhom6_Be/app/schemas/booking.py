@@ -53,6 +53,9 @@ class BookingOut(BaseModel):
     total_price: Decimal
     note: Optional[str]
     created_at: datetime
+    
+    shop_name: Optional[str] = None
+    stylist_name: Optional[str] = None
 
     class Config:
         from_attributes = True

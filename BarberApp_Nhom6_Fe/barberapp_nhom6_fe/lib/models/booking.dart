@@ -3,6 +3,8 @@ class Booking {
   final int userId;
   final int shopId;
   final int? stylistId;
+  final String? shopName;
+  final String? stylistName;
   final String status;
   final DateTime startDt;
   final DateTime endDt;
@@ -14,6 +16,8 @@ class Booking {
     required this.userId,
     required this.shopId,
     this.stylistId,
+    this.shopName,
+    this.stylistName,
     required this.status,
     required this.startDt,
     required this.endDt,
@@ -41,6 +45,8 @@ class Booking {
       userId: parseInt(json['user_id']),
       shopId: parseInt(json['shop_id']),
       stylistId: json['stylist_id'] == null ? null : parseInt(json['stylist_id']),
+      shopName: json['shop_name'],
+      stylistName: json['stylist_name'],
       status: json['status'] ?? 'pending',
       startDt: DateTime.parse(json['start_dt']),
       endDt: DateTime.parse(json['end_dt']),
