@@ -1,4 +1,3 @@
-
 from fastapi import APIRouter, Depends, HTTPException, status, Query, BackgroundTasks
 from datetime import datetime, date, time, timezone, timedelta
 
@@ -8,9 +7,9 @@ from app.core.deps import get_db
 from app.core.auth_deps import admin_required, get_current_user
 from app.models.booking import Booking, BookingService
 from app.models.stylist import Stylist
-from app.models.schedule import WorkSchedule   # ✅ thêm import này
+from app.models.schedule import WorkSchedule
 from app.models.user import User
-from app.models.shop import Shop  # để lấy tên shop
+from app.models.shop import Shop
 from app.schemas.booking import BookingOut, BookingCreate, BookingUpdate, BookingStatus
 from app.schemas.booking import BookingDetailOut, BookingCancelIn 
 from app.core.mailer import send_booking_email  # 🟢 module gửi email
@@ -18,14 +17,17 @@ from app.core.mailer import send_booking_email  # 🟢 module gửi email
 
 router = APIRouter(prefix="/bookings", tags=["bookings"])
 
+# 🇻🇳 Múi giờ Việt Nam (GMT+7)
+VIETNAM_TZ = timezone(timedelta(hours=7))
+
 
 # ------------------------------
-# 🕒 Hàm hỗ trợ chuyển datetime sang UTC
+# 🕒 Hàm hỗ trợ chuyển datetime sang giờ Việt Nam
 # ------------------------------
-def _to_utc(dt: datetime) -> datetime:
+def _to_vietnam_time(dt: datetime) -> datetime:
     if dt.tzinfo is None:
-        return dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc)
+        return dt.replace(tzinfo=VIETNAM_TZ)
+    return dt.astimezone(VIETNAM_TZ)
 
 
 # ------------------------------
@@ -33,7 +35,21 @@ def _to_utc(dt: datetime) -> datetime:
 # ------------------------------
 @router.get("", response_model=list[BookingOut], dependencies=[Depends(admin_required)])
 def list_bookings(db: Session = Depends(get_db)):
-    return db.query(Booking).order_by(Booking.id.desc()).all()
+    bookings = (
+        db.query(Booking)
+        .options(joinedload(Booking.shop), joinedload(Booking.stylist),joinedload(Booking.user))
+        .order_by(Booking.id.desc())
+        .all()
+    )
+
+    result = []
+    for b in bookings:
+        data = b.__dict__.copy()
+        data["shop_name"] = b.shop.name if getattr(b, "shop", None) else None
+        data["stylist_name"] = b.stylist.name if getattr(b, "stylist", None) else None
+        data["user_phone"] = b.user.phone if getattr(b, "user", None) else None
+        result.append(data)
+    return result
 
 
 # ------------------------------
@@ -44,12 +60,24 @@ def list_my_bookings(
     db: Session = Depends(get_db),
     me: User = Depends(get_current_user),
 ):
-    return (
+    # ✅ join với Shop và Stylist để lấy tên hiển thị
+    bookings = (
         db.query(Booking)
+        .options(joinedload(Booking.shop), joinedload(Booking.stylist))
         .filter(Booking.user_id == me.id)
         .order_by(Booking.start_dt.desc())
         .all()
     )
+
+    # ✅ thêm shop_name và stylist_name vào kết quả
+    result = []
+    for b in bookings:
+        data = b.__dict__.copy()
+        data["shop_name"] = b.shop.name if getattr(b, "shop", None) else None
+        data["stylist_name"] = b.stylist.name if getattr(b, "stylist", None) else None
+        result.append(data)
+
+    return result
 
 
 # ------------------------------
@@ -61,12 +89,21 @@ def list_my_bookings(
     dependencies=[Depends(admin_required)],
 )
 def list_user_bookings(user_id: int, db: Session = Depends(get_db)):
-    return (
+    bookings = (
         db.query(Booking)
+        .options(joinedload(Booking.shop), joinedload(Booking.stylist))
         .filter(Booking.user_id == user_id)
         .order_by(Booking.start_dt.desc())
         .all()
     )
+
+    result = []
+    for b in bookings:
+        data = b.__dict__.copy()
+        data["shop_name"] = b.shop.name if getattr(b, "shop", None) else None
+        data["stylist_name"] = b.stylist.name if getattr(b, "stylist", None) else None
+        result.append(data)
+    return result
 
 
 # ------------------------------
@@ -77,7 +114,7 @@ def create_booking(
     payload: BookingCreate,
     db: Session = Depends(get_db),
     me: User = Depends(get_current_user),
-    background_tasks: BackgroundTasks = None,  # ✅ thêm để gửi email nền
+    background_tasks: BackgroundTasks = None,
 ):
     """
     - User bình thường → booking gán user_id = me.id
@@ -110,16 +147,17 @@ def create_booking(
                 detail="Stylist already has a booking in this time range",
             )
 
-    start_utc = _to_utc(payload.start_dt)
-    end_utc = _to_utc(payload.end_dt)
+    # 🇻🇳 Chuyển thời gian sang múi giờ Việt Nam
+    start_vn = _to_vietnam_time(payload.start_dt)
+    end_vn = _to_vietnam_time(payload.end_dt)
 
     # 🟢 Tạo booking
     booking = Booking(
         user_id=user_id,
         shop_id=payload.shop_id,
         stylist_id=payload.stylist_id,
-        start_dt=start_utc,
-        end_dt=end_utc,
+        start_dt=start_vn,
+        end_dt=end_vn,
         total_price=payload.total_price,
         note=payload.note,
     )
@@ -141,9 +179,7 @@ def create_booking(
     db.commit()
     db.refresh(booking)
 
-    # ------------------------------
-    # ✉️ GỬI EMAIL XÁC NHẬN
-    # ------------------------------
+    # ✉️ Gửi email xác nhận (giờ VN)
     user = db.query(User).filter(User.id == user_id).first()
     shop = db.query(Shop).filter(Shop.id == payload.shop_id).first()
 
@@ -224,8 +260,8 @@ def get_stylist_bookings_by_day(
     db: Session = Depends(get_db),
     me=Depends(get_current_user),
 ):
-    start = datetime.combine(day, time.min).replace(tzinfo=timezone.utc)
-    end = datetime.combine(day, time.max).replace(tzinfo=timezone.utc)
+    start = datetime.combine(day, time.min).replace(tzinfo=VIETNAM_TZ)
+    end = datetime.combine(day, time.max).replace(tzinfo=VIETNAM_TZ)
 
     return (
         db.query(Booking)
@@ -242,18 +278,15 @@ def get_stylist_bookings_by_day(
     )
 
 
-# ✅ 7. Trả về danh sách giờ TRỐNG của stylist trong ngày
+# ✅ 8️⃣ Trả về danh sách giờ TRỐNG của stylist trong ngày
 @router.get("/stylist/{stylist_id}/available")
 def get_stylist_available_slots(
     stylist_id: int,
-    day: date = Query(..., alias="date"),  # ví dụ ?date=2025-10-25
+    day: date = Query(..., alias="date"),
     db: Session = Depends(get_db),
 ):
-    """
-    Trả về danh sách các khoảng giờ trống của stylist trong ngày (dựa trên ca làm và booking hiện có)
-    """
     # 1️⃣ Lấy ca làm theo thứ
-    weekday_str = day.strftime("%a")[:3]  # Mon/Tue/Wed...
+    weekday_str = day.strftime("%a")[:3]
     schedule = (
         db.query(WorkSchedule)
         .filter(
@@ -263,11 +296,11 @@ def get_stylist_available_slots(
         .first()
     )
     if not schedule:
-        return []  # stylist nghỉ ngày này
+        return []
 
     # 2️⃣ Lấy tất cả booking đã chiếm chỗ trong ngày
-    start_day = datetime.combine(day, time.min).replace(tzinfo=timezone.utc)
-    end_day = datetime.combine(day, time.max).replace(tzinfo=timezone.utc)
+    start_day = datetime.combine(day, time.min).replace(tzinfo=VIETNAM_TZ)
+    end_day = datetime.combine(day, time.max).replace(tzinfo=VIETNAM_TZ)
     bookings = (
         db.query(Booking)
         .filter(
@@ -282,21 +315,21 @@ def get_stylist_available_slots(
 
     # 3️⃣ Tạo danh sách slot rảnh dựa trên ca làm và booking
     available = []
-    current = datetime.combine(day, schedule.start_time).replace(tzinfo=timezone.utc)
-    work_end = datetime.combine(day, schedule.end_time).replace(tzinfo=timezone.utc)
+    current = datetime.combine(day, schedule.start_time).replace(tzinfo=VIETNAM_TZ)
+    work_end = datetime.combine(day, schedule.end_time).replace(tzinfo=VIETNAM_TZ)
 
     for b in bookings:
         if current < b.start_dt:
             available.append({
-                "start": current.isoformat().replace("+00:00", "Z"),
-                "end": b.start_dt.isoformat().replace("+00:00", "Z"),
+                "start": current.isoformat(),
+                "end": b.start_dt.isoformat(),
             })
         current = max(current, b.end_dt)
 
     if current < work_end:
         available.append({
-            "start": current.isoformat().replace("+00:00", "Z"),
-            "end": work_end.isoformat().replace("+00:00", "Z"),
+            "start": current.isoformat(),
+            "end": work_end.isoformat(),
         })
 
     return available

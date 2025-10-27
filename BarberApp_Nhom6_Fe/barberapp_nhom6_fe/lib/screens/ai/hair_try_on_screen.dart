@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:dio/dio.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -88,6 +89,12 @@ class _HairTryOnScreenState extends State<HairTryOnScreen> {
                 onPressed: () => _pick(false),
                 icon: const Icon(Icons.photo),
                 label: const Text('Thư viện'),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton.icon(
+                onPressed: () => context.go('/home'),
+                icon: const Icon(Icons.home),
+                label: const Text('Home'),
               ),
             ]),
             const SizedBox(height: 8),
