@@ -9,6 +9,8 @@ from app.api.routers import shops, services, work_schedules
 from app.api.routers import shops, services, stylists, work_schedules
 from app.api.routers import shops, services, stylists, work_schedules, bookings
 from app.api.routers import reviews
+
+from app.api.routers import statistics
 app = FastAPI(title=settings.APP_NAME)
 
 # CORS cho Flutter (tuỳ cập nhật origin sau)
@@ -43,6 +45,8 @@ app.include_router(work_schedules.router)
 app.include_router(bookings.router)
 
 app.include_router(reviews.router)
+
+app.include_router(statistics.router)
 @app.get("/")
 def root():
     return {"app": settings.APP_NAME, "env": settings.APP_ENV}
