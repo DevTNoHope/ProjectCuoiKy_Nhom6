@@ -4,6 +4,10 @@ class Shop {
   final String address;
   final String? phone;
   final bool isActive;
+  final double? lat;
+  final double? lng;
+  final String? openTime;
+  final String? closeTime;
 
   Shop({
     required this.id,
@@ -11,6 +15,10 @@ class Shop {
     required this.address,
     this.phone,
     required this.isActive,
+    this.lat,
+    this.lng,
+    this.openTime,
+    this.closeTime,
   });
 
   factory Shop.fromJson(Map<String, dynamic> json) {
@@ -20,6 +28,14 @@ class Shop {
       address: json['address'] ?? '',
       phone: json['phone'],
       isActive: json['is_active'] ?? true,
+      lat: (json['lat'] != null)
+          ? double.tryParse(json['lat'].toString())
+          : null,
+      lng: (json['lng'] != null)
+          ? double.tryParse(json['lng'].toString())
+          : null,
+      openTime: json['open_time'],
+      closeTime: json['close_time'],
     );
   }
 
@@ -29,5 +45,9 @@ class Shop {
     'address': address,
     'phone': phone,
     'is_active': isActive,
+    'lat': lat,
+    'lng': lng,
+    'open_time': openTime,
+    'close_time': closeTime,
   };
 }

@@ -23,9 +23,14 @@ class ShopService {
     required String name,
     required String address,
     String? phone,
+    double? lat,
+    double? lng,
+    String? openTime, // 🕒 HH:mm:ss hoặc HH:mm
+    String? closeTime,
     bool isActive = true,
   }) async {
     final token = await _store.getToken();
+
     final res = await _dio.post(
       '/shops',
       options: Options(headers: {
@@ -36,9 +41,14 @@ class ShopService {
         'name': name,
         'address': address,
         'phone': phone,
+        'lat': lat,
+        'lng': lng,
+        'open_time': openTime,
+        'close_time': closeTime,
         'is_active': isActive,
       },
     );
+
     if (res.statusCode != 201 && res.statusCode != 200) {
       throw Exception('Thêm cửa hàng thất bại: ${res.data}');
     }
@@ -50,9 +60,14 @@ class ShopService {
     String? name,
     String? address,
     String? phone,
+    double? lat,
+    double? lng,
+    String? openTime,
+    String? closeTime,
     bool? isActive,
   }) async {
     final token = await _store.getToken();
+
     final res = await _dio.put(
       '/shops/$id',
       options: Options(headers: {
@@ -63,6 +78,10 @@ class ShopService {
         if (name != null) 'name': name,
         if (address != null) 'address': address,
         if (phone != null) 'phone': phone,
+        if (lat != null) 'lat': lat,
+        if (lng != null) 'lng': lng,
+        if (openTime != null) 'open_time': openTime,
+        if (closeTime != null) 'close_time': closeTime,
         if (isActive != null) 'is_active': isActive,
       },
     );
