@@ -4,6 +4,7 @@ import '../../services/auth_service.dart';
 import 'ReviewsPage.dart';
 import 'ServicesPage.dart';
 import 'ShopsPage.dart';
+import 'StatisticsPage.dart';
 import 'StylistsPage.dart';
 import 'WorkSchedulesPage.dart';
 import 'BookingsPage.dart';
@@ -28,6 +29,7 @@ class _AdminScreenState extends State<AdminScreen> {
     BookingsPage(), // ✅ Duyệt / Hủy Booking
     ReviewsPage(),
     AdminBookingCreatePage(), // ✅ Đặt lịch cho khách
+    StatisticsPage(),
   ];
 
   final List<String> _titles = const [
@@ -38,6 +40,7 @@ class _AdminScreenState extends State<AdminScreen> {
     'Duyệt / Hủy Booking',
     'Đánh giá khách hàng',
     'Đặt lịch cho khách',
+    'Thống kê',
   ];
 
   @override
@@ -87,6 +90,7 @@ class _AdminScreenState extends State<AdminScreen> {
             _buildMenuItem(Icons.calendar_month, 'Booking', 4),
             _buildMenuItem(Icons.rate_review, 'Đánh giá', 5),
             _buildMenuItem(Icons.add_circle_outline, 'Đặt lịch cho khách', 6),
+            _buildMenuItem(Icons.bar_chart, 'Thống kê', 7),
           ],
         ),
       ),
