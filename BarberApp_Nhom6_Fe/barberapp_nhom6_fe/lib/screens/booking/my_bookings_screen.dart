@@ -35,10 +35,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
 
   /// 🕒 Parse ISO string, giữ nguyên múi giờ Việt Nam (UTC+7)
   DateTime _parseVietnamTime(String s) {
-    // Nếu chuỗi có "Z" hoặc offset khác thì DateTime.parse sẽ tự nhận dạng
     final dt = DateTime.parse(s);
-
-    // Nếu không có tzinfo (naive datetime) → coi là giờ Việt Nam
     if (!dt.isUtc && dt.timeZoneOffset == Duration.zero) {
       return dt.add(const Duration(hours: 7));
     }
@@ -96,8 +93,9 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
               final startText = _fmtVN(startStr);
               final endText = _fmtVNShort(endStr);
 
-              final shopId = b['shop_id'];
-              final stylistId = b['stylist_id'];
+              // ✅ Lấy tên cửa hàng và tên thợ
+              final shopName = b['shop_name'] ?? 'Không xác định';
+              final stylistName = b['stylist_name'] ?? 'Chưa chọn';
               final status = (b['status'] ?? '').toString();
 
               final money = _moneyFmt.format(_asNum(b['total_price']));
@@ -105,8 +103,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
               return ListTile(
                 leading: const Icon(Icons.event_note),
                 title: Text('$startText  →  $endText'),
-                subtitle:
-                Text('Cửa hàng #$shopId • Thợ #$stylistId • $status'),
+                subtitle: Text('💈 $shopName • ✂️ $stylistName • $status'),
                 trailing: Text(
                   money,
                   style: const TextStyle(fontWeight: FontWeight.w600),
