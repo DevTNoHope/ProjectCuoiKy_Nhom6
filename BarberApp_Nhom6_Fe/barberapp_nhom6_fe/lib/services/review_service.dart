@@ -72,4 +72,145 @@ class ReviewService {
     }
     throw Exception('Reply failed at $path (${res.statusCode}): ${res.data}');
   }
+  /// GET /reviews/booking/{booking_id}
+  /// Nếu BE trả 404 -> return null thay vì throw.
+  Future<Review?> getByBookingId(int bookingId) async {
+    final token = await _store.getToken();
+    if (token == null || token.isEmpty) throw Exception("Bạn chưa đăng nhập");
+
+    final path = '/reviews/booking/$bookingId';
+    debugPrint('🛰️ GET ${AuthService.BASE_URL}$path');
+
+    final res = await _dio.get(
+      path,
+      options: Options(
+        headers: {'Authorization': 'Bearer $token'},
+        validateStatus: (code) => true,
+      ),
+    );
+
+    if (res.statusCode == 200 && res.data is Map) {
+      return Review.fromJson(Map<String, dynamic>.from(res.data as Map));
+    }
+    if (res.statusCode == 404) return null;
+
+    if (res.statusCode == 401) throw Exception('401 Unauthorized: Token thiếu/sai/hết hạn.');
+    throw Exception('GET $path failed (${res.statusCode}): ${res.data}');
+  }
+
+  /// POST /reviews
+  /// Body (BE hiện yêu cầu): { booking_id, user_id, rating, comment? }
+  Future<Review> create({
+    required int bookingId,
+    required int userId,
+    required int rating,
+    String? comment,
+  }) async {
+    final token = await _store.getToken();
+    if (token == null || token.isEmpty) throw Exception("Bạn chưa đăng nhập");
+
+    const path = '/reviews';
+    final body = {
+      'booking_id': bookingId,
+      'user_id': userId,          // BE của bạn đang yêu cầu field này
+      'rating': rating,
+      if (comment != null && comment.trim().isNotEmpty) 'comment': comment.trim(),
+    };
+
+    debugPrint('🛰️ POST ${AuthService.BASE_URL}$path body=$body');
+
+    final res = await _dio.post(
+      path,
+      data: body,
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        validateStatus: (code) => true,
+      ),
+    );
+
+    if ((res.statusCode == 200 || res.statusCode == 201) && res.data is Map) {
+      return Review.fromJson(Map<String, dynamic>.from(res.data as Map));
+    }
+
+    if (res.statusCode == 400) {
+      throw Exception('400 Bad Request: ${res.data}');
+    }
+    if (res.statusCode == 401) {
+      throw Exception('401 Unauthorized: Token thiếu/sai/hết hạn.');
+    }
+    if (res.statusCode == 404) {
+      throw Exception('404 Not Found: booking_id hoặc endpoint không đúng. ${res.data}');
+    }
+    if (res.statusCode == 422) {
+      throw Exception('422 Unprocessable: Body không hợp lệ. ${res.data}');
+    }
+    throw Exception('POST $path failed (${res.statusCode}): ${res.data}');
+  }
+
+  /// PUT /reviews/{id}
+  /// Body: { rating, comment? }
+  Future<Review> update({
+    required int reviewId,
+    required int rating,
+    String? comment,
+  }) async {
+    final token = await _store.getToken();
+    if (token == null || token.isEmpty) throw Exception("Bạn chưa đăng nhập");
+
+    final path = '/reviews/$reviewId';
+    final body = {
+      'rating': rating,
+      if (comment != null && comment.trim().isNotEmpty) 'comment': comment.trim(),
+    };
+
+    debugPrint('🛰️ PUT ${AuthService.BASE_URL}$path body=$body');
+
+    final res = await _dio.put(
+      path,
+      data: body,
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        validateStatus: (code) => true,
+      ),
+    );
+
+    if ((res.statusCode == 200 || res.statusCode == 201) && res.data is Map) {
+      return Review.fromJson(Map<String, dynamic>.from(res.data as Map));
+    }
+
+    if (res.statusCode == 401) throw Exception('401 Unauthorized: Token thiếu/sai/hết hạn.');
+    if (res.statusCode == 404) throw Exception('404 Not Found: review_id không tồn tại.');
+    if (res.statusCode == 422) throw Exception('422 Unprocessable: Body không hợp lệ. ${res.data}');
+    throw Exception('PUT $path failed (${res.statusCode}): ${res.data}');
+  }
+
+  /// Upsert: đã có review cho booking -> update; chưa có -> create.
+  Future<Review> upsertForBooking({
+    required int bookingId,
+    required int userId,
+    required int rating,
+    String? comment,
+  }) async {
+    final existing = await getByBookingId(bookingId);
+    if (existing == null) {
+      return await create(
+        bookingId: bookingId,
+        userId: userId,
+        rating: rating,
+        comment: comment,
+      );
+    }
+    return await update(
+      reviewId: existing.id,
+      rating: rating,
+      comment: comment,
+    );
+  }
+
 }
