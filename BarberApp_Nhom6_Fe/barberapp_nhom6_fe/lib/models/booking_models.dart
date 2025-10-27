@@ -86,6 +86,13 @@ class ServiceModel {
     durationMin: _asInt(j['duration_min'] ?? j['duration']),
     price: _asInt(j['price']),
   );
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'duration_min': durationMin,
+    'price': price,
+  };
 }
 
 /// Lịch làm việc theo giờ trong ngày (HH:MM:SS)

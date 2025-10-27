@@ -1,13 +1,36 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../services/notification_service.dart';
 import '../services/auth_service.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final auth = AuthService();
+  final NotificationService _notificationService = NotificationService();
+
+  @override
+  void initState() {
+    super.initState();
+    // Load thông báo khi user mở app để cập nhật badge
+    _loadNotifications();
+  }
+
+  Future<void> _loadNotifications() async {
+    try {
+      await _notificationService.getNotifications();
+    } catch (e) {
+      debugPrint('Error loading notifications: $e');
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final auth = AuthService();
 
     Widget actionButton({
       required IconData icon,
@@ -39,6 +62,47 @@ class HomeScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Trang người dùng'),
         actions: [
+          // Nút chuông thông báo với badge cho user
+          ValueListenableBuilder<int>(
+            valueListenable: NotificationService.unreadCount,
+            builder: (context, count, _) {
+              return Stack(
+                children: [
+                  IconButton(
+                    tooltip: 'Thông báo',
+                    icon: const Icon(Icons.notifications),
+                    onPressed: () async {
+                      // Load lại thông báo trước khi vào
+                      await _loadNotifications();
+                      NotificationService.resetUnread();
+                      if (context.mounted) {
+                        context.go('/notifications');
+                      }
+                    },
+                  ),
+                  if (count > 0)
+                    Positioned(
+                      right: 10,
+                      top: 10,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                        child: Center(
+                          child: Text(
+                            count > 9 ? '9+' : '$count',
+                            style: const TextStyle(color: Colors.white, fontSize: 11),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
           IconButton(
             tooltip: 'Đăng xuất',
             icon: const Icon(Icons.logout),

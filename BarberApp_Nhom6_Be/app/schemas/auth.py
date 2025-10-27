@@ -31,3 +31,10 @@ class UserOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+from pydantic import BaseModel
+from typing import Literal, Optional
+
+class OneSignalRegisterIn(BaseModel):
+    player_id: str
+    platform: Optional[Literal["android", "ios", "web"]] = "android"

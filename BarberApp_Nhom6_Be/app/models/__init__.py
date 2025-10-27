@@ -12,3 +12,4 @@ from .device import Device
 from .chat import ChatMessage
 from .image import Image
 from .otp import OtpCode
+from .notification import Notification  # thêm dòng này

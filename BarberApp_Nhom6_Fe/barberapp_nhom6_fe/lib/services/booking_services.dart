@@ -7,7 +7,7 @@ class ApiBase {
   final Dio _dio;
   final SecureStore _store = SecureStore();
   ApiBase({Dio? dio}): _dio = dio ?? Dio(BaseOptions(
-    baseUrl: 'http://192.168.1.8:8000', // ví dụ 192.168.1.8
+    baseUrl: 'http://192.168.1.3:8000', // ví dụ 192.168.1.8
     connectTimeout: const Duration(seconds: 10),
     receiveTimeout: const Duration(seconds: 15),
   )){
@@ -61,9 +61,11 @@ class BookingService extends ApiBase {
     required int stylistId,
     required DateTime date,
   }) async {
+    // BE yêu cầu 'date=YYYY-MM-DD'
+    final yyyyMmDd = date.toLocal().toString().substring(0, 10);
     final res = await dio.get(
       '/bookings/stylist/$stylistId',
-      queryParameters: {'date': date.toIso8601String().substring(0, 10)},
+      queryParameters: {'date': yyyyMmDd},
       options: await _auth(),
     );
     final list = (res.data as List).cast<Map>();
@@ -71,6 +73,7 @@ class BookingService extends ApiBase {
         .map((e) => BookingShort.fromJson(Map<String, dynamic>.from(e)))
         .toList();
   }
+
   Future<List<Map<String, dynamic>>> getMyBookings() async {
     final res = await dio.get('/bookings/me', options: await _auth());
     final list = (res.data as List).cast<Map>();
@@ -79,4 +82,5 @@ class BookingService extends ApiBase {
   Future<void> create(BookingCreateReq req) async {
     await dio.post('/bookings', data: req.toJson(), options: await _auth());
   }
+
 }

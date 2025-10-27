@@ -1,6 +1,7 @@
 // lib/screens/booking/service_pick_screen.dart
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'dart:convert';
 import '../../services/booking_services.dart';
 import '../../models/booking_models.dart';
 
@@ -24,10 +25,11 @@ class _ServicePickScreenState extends State<ServicePickScreen>{
             final sv = list[i];
             return ListTile(
               title: Text('${sv.name} (${sv.durationMin} phút)'),
-              onTap: ()=> context.go('/booking/slots', extra:{
+              subtitle: Text('Giá: ${sv.price.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')} VNĐ'),
+              onTap: ()=> context.push('/booking/slots', extra:{
                 'shop': widget.shopId,
                 'stylist': widget.stylistId,
-                'service': sv,
+                'service': sv.toJson(), // serialize service
               }),
             );
           });

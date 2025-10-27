@@ -139,10 +139,10 @@ class _SlotPickScreenState extends State<SlotPickScreen> {
                           'Dịch vụ: ${widget.service.name} (${widget.service.durationMin} phút)'),
                       onTap: () {
                         // gửi start UTC sang màn xác nhận
-                        context.go('/booking/confirm', extra: {
+                        context.push('/booking/confirm', extra: {
                           'shop': widget.shop,
                           'stylist': widget.stylist,
-                          'service': widget.service,
+                          'service': widget.service.toJson(), // serialize service
                           'start': startLocal,
                         });
                       },

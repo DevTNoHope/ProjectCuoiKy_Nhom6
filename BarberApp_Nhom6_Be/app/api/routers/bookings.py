@@ -1,13 +1,18 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from datetime import datetime, date, time, timezone
 from sqlalchemy.orm import Session
-from sqlalchemy import and_
+from sqlalchemy import and_, text   # ⬅️ thêm text
+import json                         # ⬅️ thêm json
 from app.core.deps import get_db
 from app.core.auth_deps import admin_required, get_current_user
 from app.models.booking import Booking, BookingService
 from app.models.stylist import Stylist
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.schemas.booking import BookingOut, BookingCreate, BookingUpdate, BookingStatus
+# ==== THÊM IMPORT CHO THÔNG BÁO ====
+from app.models.shop import Shop
+from app.models.device import Device
+from app.core.onesignal import onesignal
 
 router = APIRouter(prefix="/bookings", tags=["bookings"])
 
@@ -110,6 +115,112 @@ def create_booking(
 
     db.commit()
     db.refresh(booking)
+   # ============================================================
+    # 🔔 GỬI THÔNG BÁO CHO USER (KHÁCH HÀNG)
+    # ============================================================
+    # đặt mặc định để tránh lỗi biến chưa gán nếu query shop lỗi
+    shop_name = "Cửa hàng"
+    shop_address = ""
+
+   # lấy thông tin cửa hàng (không để lỗi ảnh hưởng flow)
+    try:
+        shop = db.query(Shop).filter(Shop.id == payload.shop_id).first()
+        if shop:
+            if getattr(shop, "name", None):
+                shop_name = shop.name
+            if getattr(shop, "address", None):
+                shop_address = shop.address or ""
+    except Exception as _:
+        pass
+
+    try:
+        # Lấy danh sách OneSignal Player ID của user hiện tại
+        player_ids = [
+            d.onesignal_player_id
+            for d in db.query(Device).filter(Device.user_id == me.id).all()
+            if d.onesignal_player_id
+        ]
+
+        # Gửi thông báo OneSignal cho User
+        if player_ids:
+            when_str = booking.start_dt.astimezone(timezone.utc).strftime('%H:%M %d/%m/%Y')
+            onesignal.send_to_players(
+                player_ids=player_ids,
+                title_vi="Đặt lịch thành công 🎉",
+                body_vi=f"{when_str} tại {shop_name} - {shop_address}",
+                data={"bookingId": str(booking.id), "screen": "BookingDetail"},
+            )
+    except Exception as e:
+        # không làm hỏng flow nếu push lỗi
+        print(f"Lỗi gửi thông báo OneSignal (user): {e}")
+
+    # ============================================================
+    # 🔔 GỬI THÔNG BÁO CHO ADMIN (khi có booking mới)
+    # ============================================================
+    try:
+        # Lấy tất cả thiết bị của tài khoản có role = Admin
+        admin_devices = (
+            db.query(Device)
+            .join(User, User.id == Device.user_id)
+            .filter(User.role == UserRole.Admin)
+            .all()
+        )
+        admin_player_ids = [
+            d.onesignal_player_id for d in admin_devices if d.onesignal_player_id
+        ]
+
+        if admin_player_ids:
+            title = "Đặt lịch hẹn mới"
+            when_str = booking.start_dt.astimezone(timezone.utc).strftime('%H:%M %d/%m/%Y')
+            content = f"Khách {me.full_name or 'Khách hàng'} đặt lịch tại {shop_name} lúc {when_str}"
+
+            onesignal.send_to_players(
+                player_ids=admin_player_ids,
+                title_vi=title,
+                body_vi=content,
+                data={"bookingId": str(booking.id), "screen": "AdminBookingList"},
+            )
+    except Exception as e:
+        print(f"Lỗi gửi thông báo OneSignal (admin): {e}")
+ # (D) MỤC 5 — GHI LOG THÔNG BÁO VÀO DB (raw SQL, không cần model)
+    try:
+        # Log cho User (người đặt lịch)
+        user_title = "Đặt lịch thành công 🎉"
+        user_when  = booking.start_dt.astimezone(timezone.utc).strftime('%H:%M %d/%m/%Y')
+        user_body  = f"{user_when} tại {shop_name} - {shop_address}"
+        user_data  = json.dumps({"bookingId": booking.id, "screen": "BookingDetail"})
+        db.execute(
+            text("""
+                INSERT INTO notifications (user_id, title, body, data_json)
+                VALUES (:user_id, :title, :body, :data_json)
+            """),
+            {"user_id": me.id, "title": user_title, "body": user_body, "data_json": user_data}
+        )
+
+        # Log cho tất cả Admin
+        admin_user_ids = [
+            uid for (uid,) in
+            db.query(User.id).filter(User.role == UserRole.Admin).all()
+        ]
+        if admin_user_ids:
+            admin_title = "Đặt lịch hẹn mới"
+            admin_when  = booking.start_dt.astimezone(timezone.utc).strftime('%H:%M %d/%m/%Y')
+            admin_body  = f"Khách {me.full_name or 'Khách hàng'} đặt lịch tại {shop_name} lúc {admin_when}"
+            admin_data  = json.dumps({"bookingId": booking.id, "screen": "AdminBookingList"})
+            for admin_id in admin_user_ids:
+                db.execute(
+                    text("""
+                        INSERT INTO notifications (user_id, title, body, data_json)
+                        VALUES (:user_id, :title, :body, :data_json)
+                    """),
+                    {"user_id": admin_id, "title": admin_title, "body": admin_body, "data_json": admin_data}
+                )
+
+        db.commit()
+    except Exception as e:
+        # Không phá flow nếu log lỗi
+        print(f"Lỗi ghi log notifications: {e}")
+    # ============================================================
     return booking
 
 # 4. Cập nhật booking (duyệt / hủy / đổi lịch)

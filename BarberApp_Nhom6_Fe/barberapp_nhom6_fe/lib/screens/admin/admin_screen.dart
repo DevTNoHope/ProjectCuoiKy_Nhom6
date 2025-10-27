@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../services/auth_service.dart';
+import '../../services/notification_service.dart';
 import 'ReviewsPage.dart';
 import 'ServicesPage.dart';
 import 'ShopsPage.dart';
@@ -18,6 +19,7 @@ class AdminScreen extends StatefulWidget {
 class _AdminScreenState extends State<AdminScreen> {
   final auth = AuthService();
   int _selectedIndex = 0;
+  final NotificationService _notificationService = NotificationService();
 
   final List<Widget> _pages = const [
     ShopsPage(),
@@ -38,11 +40,66 @@ class _AdminScreenState extends State<AdminScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    // Load thông báo khi admin mở app để cập nhật badge
+    _loadNotifications();
+  }
+
+  Future<void> _loadNotifications() async {
+    try {
+      await _notificationService.getNotifications();
+    } catch (e) {
+      debugPrint('Error loading notifications: $e');
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(_titles[_selectedIndex]),
         actions: [
+          ValueListenableBuilder<int>(
+            valueListenable: NotificationService.unreadCount,
+            builder: (context, count, _) {
+              return Stack(
+                children: [
+                  IconButton(
+                    tooltip: 'Thông báo',
+                    icon: const Icon(Icons.notifications),
+                    onPressed: () async {
+                      // Load lại thông báo trước khi vào
+                      await _loadNotifications();
+                      NotificationService.resetUnread();
+                      if (context.mounted) {
+                        context.go('/notifications');
+                      }
+                    },
+                  ),
+                  if (count > 0)
+                    Positioned(
+                      right: 10,
+                      top: 10,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                        child: Center(
+                          child: Text(
+                            count > 9 ? '9+' : '$count',
+                            style: const TextStyle(color: Colors.white, fontSize: 11),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () async {

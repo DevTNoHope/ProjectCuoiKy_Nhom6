@@ -1,12 +1,14 @@
 // lib/routers/app_router.dart
-import 'package:flutter/widgets.dart';
+// import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
+import '../models/booking_models.dart';
 import '../screens/booking/booking_confirm_screen.dart';
 import '../screens/booking/my_bookings_screen.dart';
 import '../screens/booking/service_pick_screen.dart';
 import '../screens/booking/shop_list_screen.dart';
 import '../screens/booking/slot_pick_screen.dart';
 import '../screens/booking/stylist_list_screen.dart';
+import '../screens/notification_screen.dart';
 import '../screens/splash_screen.dart';
 import '../screens/login_screen.dart';
 import '../screens/register_screen.dart';
@@ -40,6 +42,21 @@ class AppRouter {
         path: '/admin',
         builder: (context, state) => const AdminScreen(),
       ),
+      // 🔔 Trang danh sách thông báo
+      GoRoute(
+        path: '/notifications',
+        builder: (context, state) => const NotificationScreen(),
+      ),
+
+      // 🔔 THÊM: alias cho danh sách lịch hẹn admin
+      // (để khi OneSignal gửi data.screen = 'AdminBookingList' → điều hướng hợp lệ)
+      GoRoute(
+        path: '/admin/bookings',
+        builder: (context, state) => const AdminScreen(),
+      ),
+
+      // (giữ route động ở SAU các route cụ thể như /booking/slots, /booking/confirm)
+
       // lib/routers/app_router.dart (thêm)
       GoRoute(path: '/shops', builder: (_,__)=> const ShopListScreen()),
       GoRoute(path: '/shops/:id/stylists', builder: (c,s){
@@ -53,19 +70,25 @@ class AppRouter {
       }),
       GoRoute(path: '/booking/slots', builder: (c,s){
         final extra = s.extra as Map<String,dynamic>; // shop, stylist, service
+        // deserialize service
+        final serviceData = extra['service'] as Map<String,dynamic>;
+        final service = ServiceModel.fromJson(serviceData);
         return SlotPickScreen(
-          shop: extra['shop'],
-          stylist: extra['stylist'],
-          service: extra['service'],
+          shop: extra['shop'] as int,
+          stylist: extra['stylist'] as int,
+          service: service,
         );
       }),
       GoRoute(path: '/booking/confirm', builder: (c,s){
         final extra = s.extra as Map<String,dynamic>; // + selectedStart
+        // deserialize service
+        final serviceData = extra['service'] as Map<String,dynamic>;
+        final service = ServiceModel.fromJson(serviceData);
         return BookingConfirmScreen(
-          shop: extra['shop'],
-          stylist: extra['stylist'],
-          service: extra['service'],
-          start: extra['start'],
+          shop: extra['shop'] as int,
+          stylist: extra['stylist'] as int,
+          service: service,
+          start: extra['start'] as DateTime,
         );
       }),
       GoRoute(

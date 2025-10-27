@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     JWT_ALG: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     
+    # OneSignal
+    ONESIGNAL_APP_ID: str = ""
+    ONESIGNAL_REST_API_KEY: str = ""
+    
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False)
 
     @property
@@ -25,3 +29,5 @@ class Settings(BaseSettings):
         return f"mysql+pymysql://{self.DB_USER}:{pw}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}?charset=utf8mb4"
 
 settings = Settings()
+
+  

@@ -9,6 +9,8 @@ from app.api.routers import shops, services, work_schedules
 from app.api.routers import shops, services, stylists, work_schedules
 from app.api.routers import shops, services, stylists, work_schedules, bookings
 from app.api.routers import reviews
+from app.api.routers import notifications  # <-- THÊM DÒNG NÀY
+import app.models  # 👈 import để load tất cả models (Notification, Booking,...)
 app = FastAPI(title=settings.APP_NAME)
 
 # CORS cho Flutter (tuỳ cập nhật origin sau)
@@ -41,7 +43,7 @@ app.include_router(services.router)
 app.include_router(stylists.router)
 app.include_router(work_schedules.router)
 app.include_router(bookings.router)
-
+app.include_router(notifications.router)     # <-- QUAN TRỌNG
 app.include_router(reviews.router)
 @app.get("/")
 def root():
