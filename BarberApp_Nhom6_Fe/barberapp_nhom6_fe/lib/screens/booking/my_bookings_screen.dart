@@ -1,8 +1,6 @@
-// lib/screens/booking/my_bookings_screen.dart
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-
 import '../../services/booking_services.dart';
 
 class MyBookingsScreen extends StatefulWidget {
@@ -13,7 +11,7 @@ class MyBookingsScreen extends StatefulWidget {
 }
 
 class _MyBookingsScreenState extends State<MyBookingsScreen> {
-  final _svc = BookingService(); // dùng service có sẵn của bạn
+  final _svc = BookingService();
   late Future<List<Map<String, dynamic>>> _f;
 
   final _dateFmt = DateFormat('yyyy-MM-dd HH:mm');
@@ -23,10 +21,9 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
   @override
   void initState() {
     super.initState();
-    _f = _svc.getMyBookings(); // hàm này của bạn đã có sẵn
+    _f = _svc.getMyBookings();
   }
 
-  // --- Helpers ---
   num _asNum(dynamic v) {
     if (v is num) return v;
     if (v is String) {
@@ -36,29 +33,25 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
     return 0;
   }
 
-  /// Parse ISO; nếu không có timezone thì mặc định coi là UTC
-  DateTime _parseIsoAssumeUtc(String s) {
+  /// 🕒 Parse ISO string, giữ nguyên múi giờ Việt Nam (UTC+7)
+  DateTime _parseVietnamTime(String s) {
+    // Nếu chuỗi có "Z" hoặc offset khác thì DateTime.parse sẽ tự nhận dạng
     final dt = DateTime.parse(s);
-    if (dt.isUtc) return dt;
-    return DateTime.utc(
-      dt.year,
-      dt.month,
-      dt.day,
-      dt.hour,
-      dt.minute,
-      dt.second,
-      dt.millisecond,
-      dt.microsecond,
-    );
+
+    // Nếu không có tzinfo (naive datetime) → coi là giờ Việt Nam
+    if (!dt.isUtc && dt.timeZoneOffset == Duration.zero) {
+      return dt.add(const Duration(hours: 7));
+    }
+    return dt;
   }
 
-  String _fmtLocal(String iso) {
-    final local = _parseIsoAssumeUtc(iso).toLocal();
+  String _fmtVN(String iso) {
+    final local = _parseVietnamTime(iso);
     return _dateFmt.format(local);
   }
 
-  String _fmtLocalShort(String iso) {
-    final local = _parseIsoAssumeUtc(iso).toLocal();
+  String _fmtVNShort(String iso) {
+    final local = _parseVietnamTime(iso);
     return DateFormat('HH:mm').format(local);
   }
 
@@ -96,13 +89,12 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
             separatorBuilder: (_, __) => const Divider(height: 1),
             itemBuilder: (_, i) {
               final b = items[i];
-
               final startStr = (b['start_dt'] ?? b['start_time']) as String;
               final endStr = (b['end_dt'] ?? b['end_time']) as String;
 
-              // LUÔN hiển thị LOCAL:
-              final startText = _fmtLocal(startStr);
-              final endText = _fmtLocalShort(endStr);
+              // ✅ Hiển thị giờ Việt Nam
+              final startText = _fmtVN(startStr);
+              final endText = _fmtVNShort(endStr);
 
               final shopId = b['shop_id'];
               final stylistId = b['stylist_id'];
@@ -113,8 +105,12 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
               return ListTile(
                 leading: const Icon(Icons.event_note),
                 title: Text('$startText  →  $endText'),
-                subtitle: Text('Cửa hàng #$shopId • Thợ #$stylistId • $status'),
-                trailing: Text(money, style: const TextStyle(fontWeight: FontWeight.w600)),
+                subtitle:
+                Text('Cửa hàng #$shopId • Thợ #$stylistId • $status'),
+                trailing: Text(
+                  money,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
               );
             },
           );
