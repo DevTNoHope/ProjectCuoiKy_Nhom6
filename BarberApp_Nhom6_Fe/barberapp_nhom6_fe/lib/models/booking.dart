@@ -6,6 +6,7 @@ class Booking {
   final String? shopName;
   final String? stylistName;
   final String? userPhone;
+  final String? userName; // 👈 thêm
   final String status;
   final DateTime startDt;
   final DateTime endDt;
@@ -20,6 +21,7 @@ class Booking {
     this.shopName,
     this.stylistName,
     this.userPhone,
+    this.userName, // 👈 thêm
     required this.status,
     required this.startDt,
     required this.endDt,
@@ -50,6 +52,7 @@ class Booking {
       shopName: json['shop_name'],
       stylistName: json['stylist_name'],
       userPhone: json['user_phone'],
+      userName: json['user_name'], // 👈 thêm
       status: json['status'] ?? 'pending',
       startDt: DateTime.parse(json['start_dt']),
       endDt: DateTime.parse(json['end_dt']),

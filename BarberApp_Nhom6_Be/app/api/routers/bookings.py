@@ -33,11 +33,16 @@ def _to_vietnam_time(dt: datetime) -> datetime:
 # ------------------------------
 # 1️⃣ Danh sách toàn bộ booking (Admin)
 # ------------------------------
+
 @router.get("", response_model=list[BookingOut], dependencies=[Depends(admin_required)])
 def list_bookings(db: Session = Depends(get_db)):
     bookings = (
         db.query(Booking)
-        .options(joinedload(Booking.shop), joinedload(Booking.stylist),joinedload(Booking.user))
+        .options(
+            joinedload(Booking.shop),
+            joinedload(Booking.stylist),
+            joinedload(Booking.user)
+        )
         .order_by(Booking.id.desc())
         .all()
     )
@@ -45,9 +50,21 @@ def list_bookings(db: Session = Depends(get_db)):
     result = []
     for b in bookings:
         data = b.__dict__.copy()
-        data["shop_name"] = b.shop.name if getattr(b, "shop", None) else None
-        data["stylist_name"] = b.stylist.name if getattr(b, "stylist", None) else None
-        data["user_phone"] = b.user.phone if getattr(b, "user", None) else None
+
+        # 🏪 Tên cửa hàng
+        data["shop_name"] = b.shop.name if b.shop else None
+
+        # ✂️ Tên thợ
+        data["stylist_name"] = b.stylist.name if b.stylist else None
+
+        # 👤 Thông tin khách hàng
+        if b.user:
+            data["user_name"] = b.user.full_name
+            data["user_phone"] = b.user.phone
+        else:
+            data["user_name"] = None
+            data["user_phone"] = None
+
         result.append(data)
     return result
 
