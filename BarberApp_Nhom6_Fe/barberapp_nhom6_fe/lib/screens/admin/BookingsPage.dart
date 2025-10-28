@@ -28,6 +28,7 @@ class _BookingsPageState extends State<BookingsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        title: const Text('Duyệt / Hủy Booking'),
         actions: [
           IconButton(icon: const Icon(Icons.refresh), onPressed: _refresh),
           PopupMenuButton<String>(
@@ -163,15 +164,28 @@ class _BookingsPageState extends State<BookingsPage> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Trạng thái: ${booking.status}'),
-            Text('Từ: ${booking.startDt}'),
-            Text('Đến: ${booking.endDt}'),
-            Text('Tổng tiền: ${booking.totalPrice}đ'),
-            if (booking.note != null) Text('Ghi chú: ${booking.note}'),
+            if (booking.userName != null)
+              Text('👤 Khách hàng: ${booking.userName}'),
+            if (booking.userPhone != null)
+              Text('📞 SĐT: ${booking.userPhone}'),
+            if (booking.shopName != null)
+              Text('🏠 Cửa hàng: ${booking.shopName}'),
+            if (booking.stylistName != null)
+              Text('✂️ Thợ: ${booking.stylistName}'),
+            const SizedBox(height: 8),
+            Text('🕒 Bắt đầu: ${booking.startDt}'),
+            Text('🕒 Kết thúc: ${booking.endDt}'),
+            const SizedBox(height: 8),
+            Text('💰 Tổng tiền: ${booking.totalPrice.toStringAsFixed(0)}đ'),
+            if (booking.note != null && booking.note!.isNotEmpty)
+              Text('📝 Ghi chú: ${booking.note}'),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Đóng')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Đóng'),
+          ),
         ],
       ),
     );
