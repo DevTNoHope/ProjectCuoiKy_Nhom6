@@ -28,13 +28,11 @@ class _HairTryOnScreenState extends State<HairTryOnScreen> {
   @override
   void initState() {
     super.initState();
-    // Khởi tạo Dio theo project của bạn
     final dio = Dio(BaseOptions(
       baseUrl: ApiConfig.baseUrl,
       connectTimeout: const Duration(seconds: 15),
       receiveTimeout: const Duration(seconds: 60),
     ));
-    // TODO: nếu có interceptor token thì thêm ở đây: dio.interceptors.add(AuthInterceptor(...));
     _svc = AiGeminiService(dio);
   }
 
@@ -52,10 +50,15 @@ class _HairTryOnScreenState extends State<HairTryOnScreen> {
 
   Future<void> _send() async {
     if (_file == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Chọn hoặc chụp một ảnh trước đã.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Chọn hoặc chụp một ảnh trước đã.')),
+      );
       return;
     }
-    setState(() { _loading = true; _urls = []; });
+    setState(() {
+      _loading = true;
+      _urls = [];
+    });
     try {
       final urls = await _svc.editImageAndGetUrls(
         filePath: _file!.path,
@@ -63,10 +66,51 @@ class _HairTryOnScreenState extends State<HairTryOnScreen> {
       );
       setState(() => _urls = urls);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Lỗi: $e')));
     } finally {
       setState(() => _loading = false);
     }
+  }
+
+  // 🔹 Hàm mở ảnh phóng to
+  void _showFullImage(String imageUrl) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (_) => GestureDetector(
+        onTap: () => Navigator.pop(context),
+        child: Scaffold(
+          backgroundColor: Colors.black,
+          body: SafeArea(
+            child: Stack(
+              children: [
+                Center(
+                  child: InteractiveViewer(
+                    child: CachedNetworkImage(
+                      imageUrl: imageUrl,
+                      fit: BoxFit.contain,
+                      placeholder: (_, __) =>
+                      const CircularProgressIndicator(color: Colors.white),
+                      errorWidget: (_, __, ___) =>
+                      const Icon(Icons.broken_image, color: Colors.white),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 16,
+                  right: 16,
+                  child: IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white, size: 30),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -106,7 +150,8 @@ class _HairTryOnScreenState extends State<HairTryOnScreen> {
             const SizedBox(height: 12),
             TextField(
               controller: _promptCtl,
-              minLines: 2, maxLines: 4,
+              minLines: 2,
+              maxLines: 4,
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
                 labelText: 'Prompt tạo ảnh',
@@ -118,28 +163,41 @@ class _HairTryOnScreenState extends State<HairTryOnScreen> {
               child: ElevatedButton.icon(
                 onPressed: _loading ? null : _send,
                 icon: _loading
-                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
                     : const Icon(Icons.auto_awesome),
                 label: const Text('Gửi & nhận ảnh'),
               ),
             ),
             const SizedBox(height: 8),
             Expanded(
-              child: _urls.isEmpty ? const SizedBox.shrink()
+              child: _urls.isEmpty
+                  ? const SizedBox.shrink()
                   : GridView.builder(
                 padding: const EdgeInsets.only(top: 4),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2, mainAxisSpacing: 8, crossAxisSpacing: 8),
+                gridDelegate:
+                const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  mainAxisSpacing: 8,
+                  crossAxisSpacing: 8,
+                ),
                 itemCount: _urls.length,
-                itemBuilder: (_, i) => ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: CachedNetworkImage(
-                    imageUrl: _urls[i],
-                    fit: BoxFit.cover,
-                    placeholder: (_, __) => const Center(child: CircularProgressIndicator()),
-                    errorWidget: (_, __, ___) => Container(
-                      color: theme.colorScheme.surfaceVariant,
-                      child: const Icon(Icons.broken_image),
+                itemBuilder: (_, i) => GestureDetector(
+                  onTap: () => _showFullImage(_urls[i]), // 👈 thêm
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: CachedNetworkImage(
+                      imageUrl: _urls[i],
+                      fit: BoxFit.cover,
+                      placeholder: (_, __) => const Center(
+                          child: CircularProgressIndicator()),
+                      errorWidget: (_, __, ___) => Container(
+                        color: theme.colorScheme.surfaceVariant,
+                        child: const Icon(Icons.broken_image),
+                      ),
                     ),
                   ),
                 ),
