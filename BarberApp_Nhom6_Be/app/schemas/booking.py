@@ -4,6 +4,8 @@ from decimal import Decimal
 from typing import Optional, List
 from enum import Enum
 
+class BookingCancelIn(BaseModel):
+    reason: str | None = None
 class BookingStatus(str, Enum):
     pending = "pending"
     approved = "approved"
@@ -41,6 +43,7 @@ class BookingUpdate(BaseModel):
     end_dt: Optional[datetime] = None
     note: Optional[str] = None
 
+
 # Trả ra client
 class BookingOut(BaseModel):
     id: int
@@ -68,3 +71,16 @@ class BookingOut(BaseModel):
             dt = dt.astimezone(timezone.utc)
         # isoformat() -> 'YYYY-MM-DDTHH:MM:SS+00:00', đổi về 'Z' cho gọn
         return dt.isoformat().replace("+00:00", "Z")
+    
+
+#Chi tiết 1 booking
+class BookingServiceDetailOut(BaseModel):
+    service_id: int
+    price: Decimal
+    duration_min: int
+    service_name: Optional[str] = None
+
+class BookingDetailOut(BookingOut):
+    shop_name: Optional[str] = None
+    stylist_name: Optional[str] = None
+    services: List[BookingServiceDetailOut] = []

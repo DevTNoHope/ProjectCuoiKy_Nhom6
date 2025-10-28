@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../models/booking_models.dart';
 import '../screens/ai/hair_try_on_screen.dart';
 import '../screens/booking/booking_confirm_screen.dart';
+import '../screens/booking/booking_detail_screen.dart';
 import '../screens/booking/my_bookings_screen.dart';
 import '../screens/booking/service_pick_screen.dart';
 import '../screens/booking/shop_list_screen.dart';
@@ -112,7 +113,14 @@ class AppRouter {
         path: '/ai/try-on',
         builder: (context, state) => const HairTryOnScreen(),
       ),
-
+      GoRoute(
+        path: '/booking/:id',
+        name: 'booking_detail',
+        builder: (context, state) {
+          final id = int.parse(state.pathParameters['id']!);
+          return BookingDetailScreen(bookingId: id);
+        },
+      ),
     ],
     redirect: (context, state) async {
       // Chỉ redirect khi ở /splash để tránh loop

@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import '../config/api_config.dart';
 import '../utils/secure_store.dart';
 import '../models/booking_models.dart';
+import '../models/booking_detail.dart';
 
 class ApiBase {
   final Dio _dio;
@@ -79,5 +80,18 @@ class BookingService extends ApiBase {
   }
   Future<void> create(BookingCreateReq req) async {
     await dio.post('/bookings', data: req.toJson(), options: await _auth());
+  }
+  Future<BookingDetail> getDetail(int bookingId) async {
+    final res = await dio.get('/bookings/$bookingId', options: await _auth());
+    final data = Map<String, dynamic>.from(res.data as Map);
+    return BookingDetail.fromJson(data);
+  }
+
+  Future<void> cancel(int bookingId, {String? reason}) async {
+    await dio.post(
+      '/bookings/$bookingId/cancel',
+      data: reason == null ? null : {'reason': reason},
+      options: await _auth(),
+    );
   }
 }
